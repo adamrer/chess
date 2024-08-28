@@ -457,12 +457,13 @@ namespace Chess
                     {
                         foreach (Square pieceCheckingKing in piecesCheckingKing)
                         {
-                            if (squares[pieceCheckingKing] is Rook || squares[pieceCheckingKing] is Queen)
+                            bool pieceCheckingKingCanBeTaken = squares[kingSquare].MoveVectors.Contains(pieceCheckingKing);
+                            if ((squares[pieceCheckingKing] is Rook || squares[pieceCheckingKing] is Queen) && pieceCheckingKingCanBeTaken)
                             {
                                 if (pieceCheckingKing.Row == square.Row || pieceCheckingKing.Column == square.Column)
                                     goto NEXTSQUARE; // enemy piece could still attack this square after moving king to this square (same row/column as the rook/queen)
                             }
-                            else if (squares[pieceCheckingKing] is Bishop || squares[pieceCheckingKing] is Queen)
+                            else if ((squares[pieceCheckingKing] is Bishop || squares[pieceCheckingKing] is Queen) && pieceCheckingKingCanBeTaken)
                             {// if we are here, queen is checking king diagonally
                                 (int, int) checkingVector = (kingSquare.Row - pieceCheckingKing.Row, kingSquare.Column - pieceCheckingKing.Column);
                                 (int, int) checkingVectorOne = (checkingVector.Item1 / Math.Abs(checkingVector.Item1), checkingVector.Item2 / Math.Abs(checkingVector.Item2));
