@@ -338,7 +338,7 @@ namespace Chess
             return availableMoves;
         }
         private static bool IsSafe(Square square, bool whitePlaying, ImmutableDictionary<Square, IPiece> squares)
-        {
+        {// square is not attacked by any enemy piece
             Type pieceType = typeof(IPiece);
             // all piece classes
             var pieceTypes = AppDomain.CurrentDomain.GetAssemblies()
@@ -440,10 +440,10 @@ namespace Chess
             }
             throw new KeyNotFoundException();
         }
-        
-        private static List<Move> GetSafeMovesForKing(ImmutableDictionary<Square, IPiece> squares, Square kingSquare, bool white)
+
+        private static List<Move> GetSafeMovesForKing(ImmutableDictionary<Square, IPiece> squares, Square kingSquare, List<Square> piecesCheckingKing, bool white)
         {
-            List<Move> safeSquares = new List<Move>();
+            List<Move> safeMoves = new List<Move>();
             foreach ((int, int) moveVector in squares[kingSquare].MoveVectors)
             {
                 Square square = new Square(kingSquare.Row + moveVector.Item1, kingSquare.Column + moveVector.Item2);
@@ -455,60 +455,30 @@ namespace Chess
                         !IsGuarded(square, !white, squares)) // not guarded
                         )
                     {
-                        safeSquares.Add(new Move(kingSquare, square));// has a safe square
-                    }
-                }
-            }
-            return safeSquares;
-        }
-        private static bool IsCheckmated(bool white, ImmutableDictionary<Square, IPiece> squares)
-        {
-            Square kingSquare;
-
-            kingSquare = FindPiece('k', white, squares);
-
-            List<Square> dangerousPiecesSquares = KingCheckedBy(squares, kingSquare, white);
-
-            if (GetSafeMovesForKing(squares, kingSquare, white).Count > 0)
-                return false;
-
-
-            if (dangerousPiecesSquares.Count > 0)
-            {// king checked and has nowhere to go
-                if (dangerousPiecesSquares.Count == 1)
-                {
-                    Type pieceType = typeof(IPiece);
-                    // all piece classes without king
-                    var pieceTypes = AppDomain.CurrentDomain.GetAssemblies()
-                        .SelectMany(s => s.GetTypes())
-                        .Where(p => pieceType.IsAssignableFrom(p) && !p.IsInterface && !p.IsAbstract && p != typeof(King));
-
-                    List<Square> squaresBetween = GetSquaresBetweenSquares(kingSquare, dangerousPiecesSquares[0]);
-                    foreach (Type type in pieceTypes)
-                    {
-                        object piece = Activator.CreateInstance(type, args: new object[] { white })!;
-                        if (piece is IPiece ipiece)
-                        { 
-                            if (FindPiecesSatisfyingCommand(new MoveCommand(ipiece.Symbol, dangerousPiecesSquares[0], null), true, white, squares).Count > 0)
-                            {// some piece can take the attacking piece
-                                return false;
-                            }
-                            foreach (var square in squaresBetween)
+                        foreach (Square pieceCheckingKing in piecesCheckingKing)
+                        {
+                            if (squares[pieceCheckingKing] is Rook || squares[pieceCheckingKing] is Queen)
                             {
-                                if (FindPiecesSatisfyingCommand(new MoveCommand(ipiece.Symbol, square, null), false, white, squares).Count > 0)
-                                {// can block the check with some piece
-                                    return false;
-                                }
+                                if (pieceCheckingKing.Row == square.Row || pieceCheckingKing.Column == square.Column)
+                                    goto NEXTSQUARE; // enemy piece could still attack this square after moving king to this square (same row/column as the rook/queen)
+                            }
+                            else if (squares[pieceCheckingKing] is Bishop || squares[pieceCheckingKing] is Queen)
+                            {// if we are here, queen is checking king diagonally
+                                (int, int) checkingVector = (kingSquare.Row - pieceCheckingKing.Row, kingSquare.Column - pieceCheckingKing.Column);
+                                (int, int) checkingVectorOne = (checkingVector.Item1 / Math.Abs(checkingVector.Item1), checkingVector.Item2 / Math.Abs(checkingVector.Item2));
+                                
+                                // square in the same direction that checking piece is attacking king plus one square
+                                Square dangerousSquare = (kingSquare.Row + checkingVectorOne.Item1, kingSquare.Column + checkingVectorOne.Item2);
+                                if (square.Equals(dangerousSquare))
+                                    goto NEXTSQUARE;
                             }
                         }
+                        safeMoves.Add(new Move(kingSquare, square));// has a safe square
+                    NEXTSQUARE:;
                     }
                 }
-                else if (dangerousPiecesSquares.Count > 1)
-                {// king is checked by atleast two pieces
-                    return true;
-                }
             }
-            return false;
+            return safeMoves;
         }
         private static List<Square> GetSquaresBetweenSquares(Square square1, Square square2)
         {
@@ -599,12 +569,13 @@ namespace Chess
 
         public static int EvaluateBoard(ImmutableDictionary<Square, IPiece> squares, bool whitePlaying)
         {// returns: greater than zero - draw, less than zero - player lost, zero - game continues
-
-            if (GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying)).Count == 0)
-                return 1;// stalemate
-
-            if (IsCheckmated(whitePlaying, squares))
+            List<Move> availableMoves = GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying));
+            Square kingSquare = FindPiece('k', whitePlaying, squares);
+            if (availableMoves.Count == 0 && !IsSafe(kingSquare, whitePlaying, squares))
                 return -1;// checkmate
+
+            if (availableMoves.Count == 0)
+                return 1;// stalemate
 
             return 0;
 
@@ -719,6 +690,8 @@ namespace Chess
             List <Move> availableMoves = new List<Move>();
             Square kingSquare = FindPiece('k', white, squares);
             
+            Dictionary<Square, Square> pinnedPieces = FindPinnedPieces(squares, kingSquare);
+
             // castle
             if (white)
             {
@@ -739,7 +712,7 @@ namespace Chess
             if (dangerousPiecesSquares.Count > 0)
             {// king is checked
                 
-                availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, white));
+                availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, dangerousPiecesSquares, white));
 
                 List<Square> squaresBetween = GetSquaresBetweenSquares(dangerousPiecesSquares[0], kingSquare);
                 foreach (Square square in squaresWithPieces)
@@ -757,20 +730,20 @@ namespace Chess
                         List<Square> piecesThatCanBlockCheck = FindPiecesSatisfyingCommand(new MoveCommand(piece.Symbol, squareToBlock, char.Parse(square.Column.ToString())), false, white, squares);
                         foreach (Square blockingPieceSquare in piecesThatCanBlockCheck)
                         {
-                            availableMoves.Add(new Move(blockingPieceSquare, squareToBlock));
+                            if (!pinnedPieces.ContainsKey(blockingPieceSquare))
+                                availableMoves.Add(new Move(blockingPieceSquare, squareToBlock));
                         }
                     }
                 }
             }
             else
             {
-                Dictionary<Square, Square> pinnedPieces = FindPinnedPieces(squares, kingSquare);
                 foreach (Square square in squaresWithPieces)
                 {
                     IPiece piece = squares[square];
                     if (piece is King)
                     {
-                        availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, white));
+                        availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, dangerousPiecesSquares, white));
 
                     }
                     else if (piece is not NoPiece && !pinnedPieces.ContainsKey(square))// pinned pieces cannot move

@@ -12,8 +12,6 @@ namespace Chess
         char Symbol { get; }
         bool Moved { get; set; }
         int Value { get; }
-        // TODO: Unicode chess symbols?
-        //bool ShowUnicodeSymbol { get; init; }
         IEnumerable<(int, int)> MoveVectors { get; }
         IEnumerable<(int, int)> AttackVectors { get; }
 

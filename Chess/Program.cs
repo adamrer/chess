@@ -14,6 +14,8 @@ namespace Chess
                 int mode;
                 while (true)
                 {
+                    MoveNumber = 1;
+
                     Console.WriteLine("CHOOSE GAME MODE: \n ------------");
                     Console.WriteLine("1) offline multiplayer");
                     Console.WriteLine("2) solo against AI");
@@ -70,7 +72,7 @@ namespace Chess
         }
         public static void OfflineMultiplayer()
         {
-            Board board = new Board("8/1p5p/8/4k3/R4Np1/6P1/1PP2P2/6K1");
+            Board board = new Board("3k4/2ppp3/8/1B2K3/8/8/8/R7");
 
             while (true)
             {
@@ -130,6 +132,7 @@ namespace Chess
                 Console.Clear();
 
             }
+            Console.ReadLine();
         }
         public static void SoloAI()
         {
@@ -192,8 +195,6 @@ namespace Chess
                     board.MakeMove(aiMove);
 
                 }
-
-
 
                 MoveNumber++;
 
