@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Chess
 {
-    internal readonly struct Square(int row, int column)
+    public readonly struct Square(int row, int column)
     {
         public int Row { get; init; } = row;
         public int Column { get; init; } = column;

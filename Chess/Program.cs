@@ -1,4 +1,5 @@
-﻿using Chess.Pieces;
+﻿using Chess.Network;
+using Chess.Pieces;
 using System.Collections.Immutable;
 
 namespace Chess
@@ -19,7 +20,7 @@ namespace Chess
                     Console.WriteLine("CHOOSE GAME MODE: \n ------------");
                     Console.WriteLine("1) offline multiplayer");
                     Console.WriteLine("2) solo against AI");
-                    Console.WriteLine("3) online multiplayer (not implemented yet)");
+                    Console.WriteLine("3) online multiplayer");
                     Console.WriteLine("4) exit");
                     Console.WriteLine();
 
@@ -46,6 +47,7 @@ namespace Chess
                         SoloAI();
                         break;
                     case 3:
+                        OnlineMultiplayer();
                         break;
                     case 4:
                         return;
@@ -57,32 +59,13 @@ namespace Chess
 
 
         }
-        private static List<Square> GetAllSquaresWithPiece(ImmutableDictionary<Square, IPiece> squares, bool white)
-        {
-            List<Square> pieceSquares = new List<Square>();
-
-            foreach (Square square in squares.Keys)
-            {
-                if (squares[square] is not NoPiece && squares[square].IsWhite == white)
-                {
-                    pieceSquares.Add(square);
-                }
-            }
-            return pieceSquares;
-        }
         public static void OfflineMultiplayer()
         {
-            Board board = new Board("3k4/2ppp3/8/1B2K3/8/8/8/R7");
+            Board board = new Board();
 
             while (true)
             {
-                ImmutableDictionary<Square, IPiece> squares = board.GetSquares();
-                List<Move> moves = ChessRules.GetAvailableMoves(squares, WhiteIsPlaying(), GetAllSquaresWithPiece(squares, WhiteIsPlaying()));
-                foreach (var m in moves)
-                {
-                    Console.WriteLine($"{squares[m.From].Symbol} {m.From} {m.To}");
-                }
-                board.Print();
+                board.Print(WhiteIsPlaying());
                 int evaluation = board.Evaluate(WhiteIsPlaying());
                 //stalemate
                 if (evaluation > 0)
@@ -109,18 +92,9 @@ namespace Chess
 
                 string? move = Console.ReadLine();
 
-                if (move != null)
+                if (move != null && board.TryMakeMove(move, WhiteIsPlaying()))
                 {
-                    if (board.TryMakeMove(move, WhiteIsPlaying()))
-                    {
-                        MoveNumber++;
-                    }
-                    else
-                    {
-                        Console.Clear();
-                        Console.WriteLine($"{move} is not a valid move!");
-                        continue;
-                    }
+                    MoveNumber++;
                 }
                 else
                 {
@@ -156,11 +130,11 @@ namespace Chess
                 //loss
                 else if (evaluation < 0)
                 {
-                    if (!WhiteIsPlaying())
-                        Console.Write("WHITE ");
+                    Console.WriteLine("YOU ");
+                    if (!playerIsWhite)
+                        Console.Write("WON");
                     else
-                        Console.Write("BLACK ");
-                    Console.WriteLine("WON");
+                        Console.Write("LOST");
                     Console.ReadLine();
                     break;
                 }
@@ -172,16 +146,7 @@ namespace Chess
                     Console.WriteLine("You are on the move");
                     string? move = Console.ReadLine();
 
-                    if (move != null)
-                    {
-                        if (!board.TryMakeMove(move, WhiteIsPlaying()))
-                        {
-                            Console.Clear();
-                            Console.WriteLine($"{move} is not a valid move!");
-                            continue;
-                        }
-                    }
-                    else
+                    if (move == null || !board.TryMakeMove(move, WhiteIsPlaying()))
                     {
                         Console.Clear();
                         Console.WriteLine($"{move} is not a valid move!");
@@ -201,6 +166,11 @@ namespace Chess
                 Console.Clear();
 
             }
+        }
+        public static void OnlineMultiplayer()
+        {
+            ChessServer server = new ChessServer();
+            server.Run();
         }
         public static bool WhiteIsPlaying()
         {

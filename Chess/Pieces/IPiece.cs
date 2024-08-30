@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Chess
 {
-    internal interface IPiece
+    public interface IPiece
     {
         bool IsWhite { get; init; }
         char Symbol { get; }

@@ -12,17 +12,17 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace Chess
 {
-    internal class Board
+    public class Board
     {
 
         int Width { get; init; } = 8;
         int Height { get; init; } = 8;
-        ImmutableDictionary<Square, IPiece> Squares { get; set; }
+        public ImmutableDictionary<Square, IPiece> Squares { get; set; }
         Square? enPassantSquare = null;// jen aby se políčko nemuselo hledat
         Square WhiteKingSquare { get; set; } = (1, 5);
         Square BlackKingSquare { get; set; } = (8, 5);
-        List<Square> WhitePieces;
-        List<Square> BlackPieces;
+        List<Square> WhitePieces = new List<Square>();
+        List<Square> BlackPieces = new List<Square>();
         public Board()
         {
             Dictionary<Square, IPiece> squares = new Dictionary<Square, IPiece>();
@@ -80,7 +80,7 @@ namespace Chess
                     {
 
                         throw;
-                    }// TODO: řešit, jestli se figurka pohla
+                    }
                     squares.Add(square, piece);
                     column++;
                 }
@@ -157,7 +157,7 @@ namespace Chess
             return true;
         }
         public void Print(bool forWhite = true)
-        {//TODO: otočit desku pro černého
+        {
             Console.WriteLine();
             int row;
             int column;
@@ -190,10 +190,9 @@ namespace Chess
             }
             while (rowCondition(row))// rows
             {
+                Console.Write($"{row} ");
                 while (columnCondition(column))// columns 
                 {
-                    if (column == columnReset)
-                        Console.Write($"{row} ");
 
                     if ((row + column) % 2 != 0)
                     {
@@ -211,7 +210,7 @@ namespace Chess
                     Console.BackgroundColor = ConsoleColor.Black;
                     Console.ForegroundColor = ConsoleColor.White;
 
-                    if (column == Width)
+                    if (column == Width + 1 - columnReset)
                         Console.WriteLine();
                     else
                         Console.Write(' ');
@@ -225,12 +224,45 @@ namespace Chess
             Console.Write("  ");
             for (int i = 0; i < Height; i++)
             {
-                Console.Write((char)('a' + i));
+                if (forWhite)
+                    Console.Write((char)('a' + i));
+                else
+                    Console.Write((char)('h' - i));
                 Console.Write(' ');
             }
             Console.WriteLine();
             Console.WriteLine("---------------------");
             Console.WriteLine();
+        }
+        public string GetFen()
+        {
+            string fen = "";
+            int emptySpaceCount = 0;
+            for (int row = Height; row > 0; row--)
+            {
+                for (int column = 1; column <= Width; column++)
+                {
+                    if (Squares[(row, column)] is NoPiece)
+                        emptySpaceCount++;
+                    else
+                    {
+                        if (emptySpaceCount != 0)
+                            fen += emptySpaceCount.ToString();
+
+                        fen += Squares[(row, column)].Symbol.ToString();
+                        emptySpaceCount = 0;
+                    }
+                }
+                if (emptySpaceCount != 0)
+                {
+                    fen += emptySpaceCount;
+                    emptySpaceCount = 0;
+                }
+                if (row != 1)
+                    fen += "/";
+            }
+
+            return fen;
         }
         public int Evaluate(bool whitePlaying)
         {
