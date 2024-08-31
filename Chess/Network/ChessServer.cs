@@ -12,43 +12,32 @@ namespace Chess.Network
 {
     internal class ChessServer
     {
-        Socket listener;
+        Socket listenerSocket;
         IPEndPoint endPoint;
+        TcpListener listener = null;
         public int MoveNumber { get; set; } = 1;
         public bool IsWhite { get; set; }
-        Socket clientSocket = null;
 
-        public ChessServer(int port = 11111, string? domain = null)
+        public ChessServer(int port = 11_111)
         {
-            if (domain == null)
-                domain = Dns.GetHostName(); // localhost
+            endPoint = new IPEndPoint(IPAddress.Any, port);
+            
+            listener = new TcpListener(endPoint);
 
-            // Establish the remote endpoint for the socket.
-            IPHostEntry ipHost;
-            IPAddress ipAddr;
 
-            ipHost = Dns.GetHostEntry(domain);
-            ipAddr = ipHost.AddressList[0];
-
-            endPoint = new IPEndPoint(ipAddr, port);
-
-            listener = new Socket(ipAddr.AddressFamily,
-                       SocketType.Stream, ProtocolType.Tcp);
         }
 
         public void Run()
         {
             try
             {
-
-                listener.Bind(endPoint);
-
-                listener.Listen(1);
+                
+                listener.Start();
 
                 Console.WriteLine("Waiting connection ... ");
 
-                clientSocket = listener.Accept();
-                
+                listenerSocket = listener.AcceptSocket();
+
                 // choosing color
                 string? color;
                 while (true)
@@ -61,8 +50,7 @@ namespace Chess.Network
                         break;
                     else if (color == "exit")
                     {
-                        clientSocket.Shutdown(SocketShutdown.Both);
-                        clientSocket.Close();
+                        listener.Stop();
                         return;
                     }
 
@@ -129,13 +117,13 @@ namespace Chess.Network
                     // receive move
                     byte[] bytes = new Byte[1024];
                     string opponentsMove = null;
-                    int numByte = clientSocket.Receive(bytes);
+                    int numByte = listenerSocket.Receive(bytes);
                     opponentsMove = Encoding.ASCII.GetString(bytes, 0, numByte);
                     
                     while (!board.TryMakeMove(opponentsMove, WhiteIsPlaying()))
                     {
                         SendToClient("invalid");
-                        numByte = clientSocket.Receive(bytes);
+                        numByte = listenerSocket.Receive(bytes);
                         opponentsMove = Encoding.ASCII.GetString(bytes, 0, numByte);
                     }
 
@@ -160,8 +148,7 @@ namespace Chess.Network
             }
             finally
             {
-                clientSocket.Shutdown(SocketShutdown.Both);
-                clientSocket.Close();
+                listener.Stop();
             }
         }
         private bool PrintEvaluation(Board board)
@@ -197,7 +184,7 @@ namespace Chess.Network
         private void SendToClient(string message)
         {
             byte[] response = Encoding.ASCII.GetBytes(message);
-            clientSocket.Send(response);
+            listenerSocket.Send(response);
         }
         private bool WhiteIsPlaying()
         {

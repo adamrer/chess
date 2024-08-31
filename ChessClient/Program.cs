@@ -9,34 +9,22 @@ namespace ChessClient
     {
         internal class ChessClient
         {
+            TcpClient client;
             Socket sender;
-            IPEndPoint endPoint;
             public bool IsWhite;
-            public ChessClient(int port = 11111, string? domain = null)
+            public ChessClient(int port = 11111, string ip = "localhost")
             {
 
-                if (domain == null)
-                    domain = Dns.GetHostName(); // localhost
+                client = new TcpClient(ip, port);
 
-                // Establish the remote endpoint for the socket.
-                IPHostEntry ipHost;
-                IPAddress ipAddr;
+                sender = client.Client;
 
-                ipHost = Dns.GetHostEntry(domain);
-                ipAddr = ipHost.AddressList[0];
-
-                endPoint = new IPEndPoint(ipAddr, port);
-
-                sender = new Socket(ipAddr.AddressFamily,
-                            SocketType.Stream, ProtocolType.Tcp);
 
             }
             public void Run()
             {
                 try
                 {
-
-                    sender.Connect(endPoint);
                     Console.WriteLine($"Socket connected to -> {sender.RemoteEndPoint} ");
 
                     byte[] messageReceived = new byte[1024];
@@ -83,10 +71,12 @@ namespace ChessClient
                             byteRecv = sender.Receive(messageReceived);
                             serverMessage = Encoding.ASCII.GetString(messageReceived, 0, byteRecv);
 
-                            Console.Clear();
 
                             if (serverMessage != "invalid")
+                            {
+                                Console.Clear();
                                 break;
+                            }
                             else
                                 Console.WriteLine("Invalid move");
                         }
@@ -125,8 +115,7 @@ namespace ChessClient
                 }
                 finally
                 {
-                    sender.Shutdown(SocketShutdown.Both);
-                    sender.Close();
+                    client.Close();
                 }
             }
 
@@ -135,17 +124,17 @@ namespace ChessClient
                 Board board = new Board(fen);
                 board.Print(white);
             }
-            private void PrintEndOfTheGame(string resutl)
+            private void PrintEndOfTheGame(string result)
             {
-                if (resutl == "WIN")
+                if (result == "WIN")
                 {
                     Console.WriteLine("YOU WON");
                 }
-                else if (resutl == "LOSS")
+                else if (result == "LOSS")
                 {
                     Console.WriteLine("YOU LOST");
                 }
-                else if (resutl == "DRAW")
+                else if (result == "DRAW")
                 {
                     Console.WriteLine("DRAW");
                 }
@@ -153,7 +142,19 @@ namespace ChessClient
         }
         static void Main(string[] args)
         {
-            ChessClient client = new ChessClient();
+            Console.Write("IP to connect to: ");
+            ChessClient client;
+            
+            try
+            {
+                client = new ChessClient(ip: Console.ReadLine());
+            }
+            catch
+            {
+                Console.WriteLine("!!! Error connecting to server");
+                Console.ReadLine();
+                return;
+            }
             client.Run();
         }
     }
