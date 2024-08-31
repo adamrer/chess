@@ -98,20 +98,10 @@ namespace ChessClient
 
                 }
 
-                catch (ArgumentNullException ane)
-                {
-
-                    Console.WriteLine("ArgumentNullException : {0}", ane.ToString());
-                }
-
-                catch (SocketException)
-                {
-                    Console.WriteLine("!!! Error connecting to server");
-                }
-
                 catch (Exception e)
                 {
-                    Console.WriteLine("Unexpected exception : {0}", e.ToString());
+                    Console.WriteLine(e.Message);
+                    Console.ReadLine();
                 }
                 finally
                 {

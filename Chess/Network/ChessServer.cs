@@ -144,7 +144,8 @@ namespace Chess.Network
 
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine(e.Message.ToString());
+                Console.ReadLine();
             }
             finally
             {
