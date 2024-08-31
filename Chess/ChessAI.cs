@@ -16,20 +16,25 @@ namespace Chess
             IsWhite = isWhite;
         }
 
-        private int CalculateMobilityScore(ImmutableDictionary<Square, IPiece> squares)
+        private int CalculateMobilityScore(Board board)
         {
-            return ChessRules.GetAvailableMoves(squares, IsWhite, GetAllSquaresWithPiece(squares, IsWhite)).Count / 50;
+            return ChessRules.GetAvailableMoves(board, IsWhite).Count / 50;
         }
-        private int CalculateKingSafetyScore(ImmutableDictionary<Square, IPiece> squares)
+        private int CalculateKingSafetyScore(Board board, bool white)
         {// TODO: calculate king safety
+            Square kingSquare = board.WhitePieces['K'][0];
+            if (!white)
+                kingSquare = board.BlackPieces['k'][0];
+            
+
             return 0;
         }
-        private int CalculateMaterialScore(ImmutableDictionary<Square, IPiece> squares)
+        private int CalculateMaterialScore(Board board)
         {
             int score = 0;
-            foreach (Square square in squares.Keys)
+            foreach (Square square in board.Squares.Keys)
             {
-                IPiece piece = squares[square];
+                IPiece piece = board.Squares[square];
                 if (piece is not NoPiece )
                 {
                     if (piece.IsWhite == IsWhite)
@@ -40,7 +45,7 @@ namespace Chess
             }
             return score;
         }
-        private int CalculateCenterScore(ImmutableDictionary<Square, IPiece> squares)
+        private int CalculateCenterScore(Board board)
         {// políčka d4, e4, d5, e5 jsou zabraná
             int score = 0;
             
@@ -50,9 +55,9 @@ namespace Chess
             };
             foreach (Square centerSquare in centerSquares)
             {
-                if (squares[centerSquare] is not NoPiece)
+                if (board.Squares[centerSquare] is not NoPiece)
                 {
-                    if (squares[centerSquare].IsWhite == IsWhite)
+                    if (board.Squares[centerSquare].IsWhite == IsWhite)
                         score += 3;
                     else
                         score -= 3;
@@ -61,52 +66,28 @@ namespace Chess
 
             return score;
         }
-        private int EvaluateBoardScore(ImmutableDictionary<Square, IPiece> squares)
+        private int EvaluateBoardScore(Board board, bool white)
         {
-            int totalScore = CalculateKingSafetyScore(squares) + 
-                CalculateMobilityScore(squares) + 
-                CalculateCenterScore(squares) + 
-                CalculateMaterialScore(squares);
+            int totalScore = CalculateKingSafetyScore(board, white) + 
+                CalculateMobilityScore(board) + 
+                CalculateCenterScore(board) + 
+                CalculateMaterialScore(board);
 
             return totalScore;
         }
-        private List<Square> GetAllSquaresWithPiece(ImmutableDictionary<Square, IPiece> squares, bool white)
-        {
-            List<Square> pieceSquares = new List<Square>();
-
-            foreach (Square square in squares.Keys)
-            {
-                if (squares[square] is not NoPiece && squares[square].IsWhite == white)
-                {
-                    pieceSquares.Add(square);
-                }
-            }
-            return pieceSquares;
-        }
         
-        private MoveValue EvaluateBestMoveParallel(ImmutableDictionary<Square, IPiece> squares, 
+        private MoveValue EvaluateBestMoveParallel(Board board, 
             int depth, bool whitePlaying, int alpha, int beta)
         {//minimax
-
-            //int boardEvaluation = ChessRules.EvaluateBoard(squares, whitePlaying);
-            //if (depth == 0 || boardEvaluation != 0)
-            //{
-            //    if (boardEvaluation > 0) // draw
-            //        return new MoveValue(null, 0);
-            //    else if (boardEvaluation < 0) // win
-            //        return new MoveValue(null, int.MaxValue);
-            //    else // leaf, depth
-            //        return new MoveValue(null, EvaluateBoardScore(squares));
-            //}
 
             MoveValue maxEval = new MoveValue(null, int.MinValue);
             if (whitePlaying != IsWhite)
                 maxEval.Value = int.MaxValue;
-            var moves = ChessRules.GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying));// TODO: nějak si udržovat, kde jsou figurky?
+            var moves = ChessRules.GetAvailableMoves(board, whitePlaying);// TODO: nějak si udržovat, kde jsou figurky?
 
             Parallel.ForEach(moves, move =>
             {
-                MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, squares), depth - 1, !whitePlaying, alpha, beta);
+                MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, board), depth - 1, !whitePlaying, alpha, beta);
 
                 if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval, moves))
                     return;
@@ -117,10 +98,10 @@ namespace Chess
 
         }
         
-        private MoveValue EvaluateBestMove(ImmutableDictionary<Square, IPiece> squares,
+        private MoveValue EvaluateBestMove(Board board,
             int depth, bool whitePlaying, int alpha, int beta)
         {
-            int boardEvaluation = ChessRules.EvaluateBoard(squares, whitePlaying);
+            int boardEvaluation = ChessRules.EvaluateBoard(board, whitePlaying);
             if (depth == 0 || boardEvaluation != 0)
             {
                 if (boardEvaluation > 0) // draw
@@ -131,16 +112,16 @@ namespace Chess
                     else
                         return new MoveValue(null, int.MinValue);
                 else // leaf, depth
-                    return new MoveValue(null, EvaluateBoardScore(squares));
+                    return new MoveValue(null, EvaluateBoardScore(board, whitePlaying));
             }
 
             MoveValue maxEval = new MoveValue(null, int.MinValue);
             if (whitePlaying != IsWhite)
                 maxEval.Value = int.MaxValue;
-            var moves = ChessRules.GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying));// TODO: nějak si udržovat, kde jsou figurky?
+            var moves = ChessRules.GetAvailableMoves(board, whitePlaying);
             foreach (Move move in moves)
             {
-                MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, squares), depth - 1, !whitePlaying, alpha, beta);
+                MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, board), depth - 1, !whitePlaying, alpha, beta);
 
                 if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval, moves))
                     break;
@@ -171,9 +152,9 @@ namespace Chess
             }
             return false;
         }
-        public Move ChooseBestMove(ImmutableDictionary<Square, IPiece> squares)
+        public Move ChooseBestMove(Board board)
         {
-            MoveValue result = EvaluateBestMoveParallel(squares, 3, IsWhite, int.MinValue, int.MaxValue);
+            MoveValue result = EvaluateBestMoveParallel(board, 2, IsWhite, int.MinValue, int.MaxValue);
             return result.Move.GetValueOrDefault();
         }
     }

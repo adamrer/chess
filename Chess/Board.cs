@@ -19,8 +19,6 @@ namespace Chess
         int Height { get; init; } = 8;
         public ImmutableDictionary<Square, IPiece> Squares { get; set; }
         Square? enPassantSquare = null;// jen aby se políčko nemuselo hledat
-        Square WhiteKingSquare { get; set; } = (1, 5);
-        Square BlackKingSquare { get; set; } = (8, 5);
         public ImmutableDictionary<char, List<Square>> WhitePieces; // keys: piece symbol, values: list of squares where are the pieces
         public ImmutableDictionary<char, List<Square>> BlackPieces;
         public Board()
@@ -94,7 +92,7 @@ namespace Chess
                     else if (i == 8 && j == 4)
                     {
                         squares.Add(currentSquare, new Queen(false));
-                        whitePieces.Add((new Queen(false)).Symbol, new List<Square>() { currentSquare });
+                        blackPieces.Add((new Queen(false)).Symbol, new List<Square>() { currentSquare });
                     }
                     // kings
                     else if (i == 1 && j == 5)
@@ -105,7 +103,7 @@ namespace Chess
                     else if (i == 8 && j == 5)
                     {
                         squares.Add(currentSquare, new King(false));
-                        whitePieces.Add((new King(false)).Symbol, new List<Square>() { currentSquare });
+                        blackPieces.Add((new King(false)).Symbol, new List<Square>() { currentSquare });
                     }
                     // empty squares
                     else squares.Add(currentSquare, new NoPiece());
@@ -117,6 +115,16 @@ namespace Chess
             WhitePieces = whitePieces.ToImmutableDictionary();
             BlackPieces = blackPieces.ToImmutableDictionary();
 
+        }
+        public Board(ImmutableDictionary<Square, IPiece> squares, 
+            ImmutableDictionary<char, List<Square>> whitePieces, 
+            ImmutableDictionary<char, List<Square>> blackPieces, 
+            Square? enPassantSquare)
+        {
+            Squares = squares;
+            WhitePieces = whitePieces;
+            BlackPieces = blackPieces;
+            this.enPassantSquare = enPassantSquare;
         }
         public Board(string fen)
         {
@@ -180,27 +188,14 @@ namespace Chess
             // unknown piece
             throw new ArgumentException();
         }
-        private List<Square> GetAllSquaresWithPiece(ImmutableDictionary<Square, IPiece> squares, bool white)
-        {
-            List<Square> pieceSquares = new List<Square>();
-
-            foreach (Square square in squares.Keys)
-            {
-                if (squares[square] is not NoPiece && squares[square].IsWhite == white)
-                {
-                    pieceSquares.Add(square);
-                }
-            }
-            return pieceSquares;
-        }
         public bool TryMakeMove(string text, bool whitePlaying)
         {
-            List<Move> validMoves = ChessRules.GetAvailableMoves(Squares, whitePlaying, GetAllSquaresWithPiece(Squares, whitePlaying));
+            List<Move> validMoves = ChessRules.GetAvailableMoves(this, whitePlaying);
             
             Move move;
             try
             {
-                move = ChessRules.StringToMove(text, whitePlaying, Squares);
+                move = ChessRules.StringToMove(text, whitePlaying, this);
             }
             catch (ArgumentException)
             {
@@ -208,11 +203,9 @@ namespace Chess
             }
             if (!validMoves.Contains(move))
                 return false;
-            ImmutableDictionary<Square, IPiece>? newSquares = ChessRules.MakeMove(move, Squares);
-            if (newSquares == null)
-                return false;
-        
-            Squares = newSquares;
+            
+            MakeMove(move);
+
             return true;
         }
         public void Print(bool forWhite = true)
@@ -325,7 +318,7 @@ namespace Chess
         }
         public int Evaluate(bool whitePlaying)
         {
-            return ChessRules.EvaluateBoard(Squares, whitePlaying);
+            return ChessRules.EvaluateBoard(this, whitePlaying);
         }
         
         public ImmutableDictionary<Square, IPiece> GetSquares()
@@ -334,7 +327,11 @@ namespace Chess
         }
         public void MakeMove(Move move)
         {
-            Squares = ChessRules.MakeMove(move, Squares);
+            Board newBoard = ChessRules.MakeMove(move, this);
+            Squares = newBoard.Squares;
+            WhitePieces = newBoard.WhitePieces;
+            BlackPieces = newBoard.BlackPieces;
+            enPassantSquare = newBoard.enPassantSquare;
         }
     }
 }

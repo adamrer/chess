@@ -1,4 +1,5 @@
-﻿using Chess.Pieces;
+﻿using Chess.Linq;
+using Chess.Pieces;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -15,10 +16,11 @@ namespace Chess
     {
         public static int Height { get; } = 8;
         public static int Width { get; } = 8;
-        public static Move StringToMove(string text, bool whitePlaying, ImmutableDictionary<Square, IPiece> squares)
+        public static Move StringToMove(string text, bool whitePlaying, Board board)
         {
             // move: [*piece_symbol*][*row_or_column*][destination_square]
 
+            ImmutableDictionary<Square, IPiece> squares = board.Squares;
 
             MoveCommand query = StringToCommand(text, squares);
             
@@ -65,7 +67,12 @@ namespace Chess
             else if (piecesSquares.Count == 0)
             {
                 if (query.PieceSymbol == 'k')
-                    return new Move(FindPiece('k', whitePlaying, squares), query.Destination);
+                {
+                    Square kingSquare = board.WhitePieces['K'][0];
+                    if (!whitePlaying)
+                        kingSquare = board.BlackPieces['k'][0];
+                    return new Move(kingSquare, query.Destination);
+                }
                 throw new ArgumentException();
             }
 
@@ -430,16 +437,6 @@ namespace Chess
             }
             return false;
         }
-        private static Square FindPiece(char pieceSymbol, bool isWhite, ImmutableDictionary<Square, IPiece> squares)
-        {
-            foreach (var item in squares)
-            {
-                if (item.Value.IsWhite == isWhite &&
-                    char.ToLower(item.Value.Symbol) == char.ToLower(pieceSymbol))
-                    return item.Key;
-            }
-            throw new KeyNotFoundException();
-        }
 
         private static List<Move> GetSafeMovesForKing(ImmutableDictionary<Square, IPiece> squares, Square kingSquare, List<Square> piecesCheckingKing, bool white)
         {
@@ -467,7 +464,13 @@ namespace Chess
                             else if ((squares[pieceCheckingKing] is Bishop || squares[pieceCheckingKing] is Queen) && !pieceCheckingKingCanBeTaken)
                             {// if we are here, queen is checking king diagonally
                                 (int, int) checkingVector = (kingSquare.Row - pieceCheckingKing.Row, kingSquare.Column - pieceCheckingKing.Column);
-                                (int, int) checkingVectorOne = (checkingVector.Item1 / Math.Abs(checkingVector.Item1), checkingVector.Item2 / Math.Abs(checkingVector.Item2));
+                                (int, int) checkingVectorOne; // moves the same direction by only one square
+                                if (checkingVector.Item1 == 0)
+                                    checkingVectorOne = (0, checkingVector.Item2 / Math.Abs(checkingVector.Item2));
+                                else if (checkingVector.Item2 == 0)
+                                    checkingVectorOne = (checkingVector.Item1 / Math.Abs(checkingVector.Item1), 0);
+                                else
+                                    checkingVectorOne = (checkingVector.Item1 / Math.Abs(checkingVector.Item1), checkingVector.Item2 / Math.Abs(checkingVector.Item2));
                                 
                                 // square in the same direction that checking piece is attacking king plus one square
                                 Square dangerousSquare = (kingSquare.Row + checkingVectorOne.Item1, kingSquare.Column + checkingVectorOne.Item2);
@@ -569,11 +572,16 @@ namespace Chess
             return pinnedPieces;
         }
 
-        public static int EvaluateBoard(ImmutableDictionary<Square, IPiece> squares, bool whitePlaying)
+        public static int EvaluateBoard(Board board, bool whitePlaying)
         {// returns: greater than zero - draw, less than zero - player lost, zero - game continues
-            List<Move> availableMoves = GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying));
-            Square kingSquare = FindPiece('k', whitePlaying, squares);
-            if (availableMoves.Count == 0 && !IsSafe(kingSquare, whitePlaying, squares))
+            List<Move> availableMoves = GetAvailableMoves(board, whitePlaying);
+            Square kingSquare;
+            if (whitePlaying)
+                kingSquare = board.WhitePieces['K'][0];
+            else
+                kingSquare = board.BlackPieces['k'][0];
+
+            if (availableMoves.Count == 0 && !IsSafe(kingSquare, whitePlaying, board.Squares))
                 return -1;// checkmate
 
             if (availableMoves.Count == 0)
@@ -583,11 +591,16 @@ namespace Chess
 
         }
 
-        public static ImmutableDictionary<Square, IPiece> MakeMove(Move move, ImmutableDictionary<Square, IPiece> squares)
+        public static Board MakeMove(Move move, Board board)
         {
-            var builder = ImmutableDictionary.CreateBuilder<Square, IPiece>();
+            var newSquaresBuilder = ImmutableDictionary.CreateBuilder<Square, IPiece>();
+            var whitePieceBuilder = ImmutableDictionary.CreateBuilder<char, List<Square>>();
+            var blackPieceBuilder = ImmutableDictionary.CreateBuilder<char, List<Square>>();
+
+            ImmutableDictionary<Square, IPiece> squares = board.Squares;
 
             IPiece pieceMoving = GetPiece(squares[move.From].Symbol, squares[move.From].IsWhite);
+
             pieceMoving.Moved = true;
             
             //promotion to queen
@@ -601,11 +614,17 @@ namespace Chess
                     {
                         Square currentSquare = new Square(i, j);
                         if (move.To.Equals(currentSquare))
-                            builder.Add(new((i, j), promotion));//promotion
+                        {
+                            newSquaresBuilder.Add(new(currentSquare, promotion));//promotion
+                            if (newSquaresBuilder[currentSquare].IsWhite)
+                                whitePieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                            else
+                                blackPieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                        }
                         else if (move.From.Equals(currentSquare))
-                            builder.Add(new((i, j), new NoPiece()));// remove pawn
+                            newSquaresBuilder.Add(new(currentSquare, new NoPiece()));// remove pawn
                         else
-                            builder.Add(new((i, j), squares[currentSquare]));
+                            newSquaresBuilder.Add(new(currentSquare, squares[currentSquare]));
                     }
                 }
                 
@@ -623,13 +642,19 @@ namespace Chess
                     {
                         Square currentSquare = new Square(i, j);
                         if (move.To.Equals(currentSquare))
-                            builder.Add(new((i, j), pieceMoving)); // piece moved here
+                        {
+                            newSquaresBuilder.Add(new(currentSquare, pieceMoving)); // piece moved here
+                            if (newSquaresBuilder[currentSquare].IsWhite)
+                                whitePieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                            else
+                                blackPieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                        }
                         else if (prayPawnSquare.Equals(currentSquare))
-                            builder.Add(new((i, j), new NoPiece())); // pawn taken
+                            newSquaresBuilder.Add(new(currentSquare, new NoPiece())); // pawn taken
                         else if (move.From.Equals(currentSquare))
-                            builder.Add(new((i, j), new NoPiece())); // piece moved
+                            newSquaresBuilder.Add(new(currentSquare, new NoPiece())); // remove piece
                         else
-                            builder.Add(new((i, j), squares[currentSquare])); // no changes
+                            newSquaresBuilder.Add(new(currentSquare, squares[currentSquare])); // no changes
                     }
                 }
             }
@@ -655,42 +680,94 @@ namespace Chess
                     {
                         Square currentSquare = new Square(i, j);
                         if (move.To.Equals(currentSquare))
-                            builder.Add(new((i, j), pieceMoving)); // piece moved here
+                        {
+                            newSquaresBuilder.Add(new(currentSquare, pieceMoving)); // piece moved here
+                            if (newSquaresBuilder[currentSquare].IsWhite)
+                                whitePieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                            else
+                                blackPieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                        }
                         else if (kingSquare.Equals(currentSquare))
-                            builder.Add(new((i, j), new NoPiece())); // piece moved
+                            newSquaresBuilder.Add(new(currentSquare, new NoPiece())); // remove piece
                         else if (rookSquare.Equals(currentSquare))
-                            builder.Add(new((i, j), new NoPiece())); // rook moved
+                            newSquaresBuilder.Add(new(currentSquare, new NoPiece())); // remove rook
                         else if (rookDestination.Equals(currentSquare))
-                            builder.Add(new((i, j), rook)); // rook moved here
+                        {
+                            newSquaresBuilder.Add(new(currentSquare, rook)); // rook moved here
+
+                            if (newSquaresBuilder[currentSquare].IsWhite)
+                                whitePieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                            else
+                                blackPieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                        }
                         else
-                            builder.Add(new((i, j), squares[(i, j)])); // no changes
+                            newSquaresBuilder.Add(new(currentSquare, squares[currentSquare])); // no changes
                     }
                 }
             }
             else
-            {
+            {// TODO: přidat enpassant square
                 for (int i = 1; i < Height + 1; i++)
                 {
                     for (int j = 1; j < Width + 1; j++)
                     {
                         Square currentSquare = new Square(i, j);
                         if (move.To.Equals(currentSquare))
-                            builder.Add(new((i, j), pieceMoving));// piece moving
+                        {
+                            newSquaresBuilder.Add(new(currentSquare, pieceMoving));// piece moving
+                            if (newSquaresBuilder[currentSquare].IsWhite)
+                                whitePieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                            else
+                                blackPieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
+                        }
                         else if (move.From.Equals(currentSquare))
-                            builder.Add(new((i, j), new NoPiece()));// remove pawn
+                            newSquaresBuilder.Add(new(currentSquare, new NoPiece()));// remove piece
                         else
-                            builder.Add(new((i, j), squares[currentSquare]));
+                            newSquaresBuilder.Add(new(currentSquare, squares[currentSquare]));
                     }
                 }
             }
 
-            return builder.ToImmutable();
-        }
+            ImmutableDictionary<Square, IPiece> newSquares = newSquaresBuilder.ToImmutable();
+            ImmutableDictionary<char, List<Square>> newWhitePiecePositions = AddUnchangedPositions(newSquares, board.WhitePieces, whitePieceBuilder);
+            ImmutableDictionary<char, List<Square>> newBlackPiecePositions = AddUnchangedPositions(newSquares, board.BlackPieces, blackPieceBuilder);
 
-        public static List<Move> GetAvailableMoves(ImmutableDictionary<Square, IPiece> squares, bool white, List<Square> squaresWithPieces)
+
+            return new Board(newSquares, newWhitePiecePositions, newBlackPiecePositions, null); // TODO: řešit enpassant
+        }
+        private static ImmutableDictionary<char, List<Square>> AddUnchangedPositions(ImmutableDictionary<Square, IPiece> newSquares, 
+            ImmutableDictionary<char, List<Square>> oldPiecePositions, 
+            ImmutableDictionary<char, List<Square>>.Builder piecesBuilder)
+        {
+            // update piece positions
+            foreach (char symbol in oldPiecePositions.Keys)
+            {
+                foreach (Square pieceSquare in oldPiecePositions[symbol])
+                {
+                    if (newSquares[pieceSquare].Symbol == symbol)
+                    {// copying the unchanged piece positions
+                        if (!piecesBuilder.TryAdd(symbol, new List<Square>() { pieceSquare }))
+                        {
+                            piecesBuilder[symbol].Add(pieceSquare);
+                        }
+                    }
+
+                }
+            }
+
+            return piecesBuilder.ToImmutable();
+        }
+        public static List<Move> GetAvailableMoves(Board board, bool white)
         {
             List <Move> availableMoves = new List<Move>();
-            Square kingSquare = FindPiece('k', white, squares);
+
+            ImmutableDictionary<Square, IPiece> squares = board.Squares;
+            Square kingSquare;
+            if (white)
+                kingSquare = board.WhitePieces['K'][0];
+            else
+                kingSquare = board.BlackPieces['k'][0];
+            
             
             Dictionary<Square, Square> pinnedPieces = FindPinnedPieces(squares, kingSquare);
 
@@ -710,56 +787,72 @@ namespace Chess
                     availableMoves.Add(new Move(new Square(8, 5), new Square(8, 3)));
             }
             
+            IEnumerable<List<Square>> squaresWithPieces;
+            if (white)
+                squaresWithPieces = board.WhitePieces.Values;
+            else
+                squaresWithPieces = board.BlackPieces.Values;
+
             List<Square> dangerousPiecesSquares = KingCheckedBy(squares, kingSquare, white);
             if (dangerousPiecesSquares.Count > 0)
-            {// king is checked
+            {// king is checked, add only moves preventing check
                 
                 availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, dangerousPiecesSquares, white));
 
                 List<Square> squaresBetween = GetSquaresBetweenSquares(dangerousPiecesSquares[0], kingSquare);
-                foreach (Square square in squaresWithPieces)
+
+                foreach (List<Square> pieceSquares in squaresWithPieces)
                 {
-                    IPiece piece = squares[square];
-                    if (piece is King)
-                        continue;
-                    List<Square> piecesThatCanTakeDangerousPiece = FindPiecesSatisfyingCommand(new MoveCommand(piece.Symbol, dangerousPiecesSquares[0], char.Parse(square.Column.ToString())), true, white, squares);
-                    foreach (Square item in piecesThatCanTakeDangerousPiece)
-                    {
-                        availableMoves.Add(new Move(item, dangerousPiecesSquares[0]));
-                    }
-                    foreach (Square squareToBlock in squaresBetween)
-                    {
-                        List<Square> piecesThatCanBlockCheck = FindPiecesSatisfyingCommand(new MoveCommand(piece.Symbol, squareToBlock, char.Parse(square.Column.ToString())), false, white, squares);
-                        foreach (Square blockingPieceSquare in piecesThatCanBlockCheck)
+                    foreach (Square square in pieceSquares)
+                    {// going through squares with pieces
+
+                        IPiece piece = squares[square];
+                        if (piece is King)
+                            continue;
+                        List<Square> piecesThatCanTakeDangerousPiece = FindPiecesSatisfyingCommand(
+                            new MoveCommand(piece.Symbol, dangerousPiecesSquares[0], 
+                            char.Parse(square.Column.ToString())), true, white, squares);
+                        foreach (Square item in piecesThatCanTakeDangerousPiece)
                         {
-                            if (!pinnedPieces.ContainsKey(blockingPieceSquare))
-                                availableMoves.Add(new Move(blockingPieceSquare, squareToBlock));
+                            availableMoves.Add(new Move(item, dangerousPiecesSquares[0]));
+                        }
+                        foreach (Square squareToBlock in squaresBetween)
+                        {
+                            List<Square> piecesThatCanBlockCheck = FindPiecesSatisfyingCommand(new MoveCommand(piece.Symbol, squareToBlock, char.Parse(square.Column.ToString())), false, white, squares);
+                            foreach (Square blockingPieceSquare in piecesThatCanBlockCheck)
+                            {
+                                if (!pinnedPieces.ContainsKey(blockingPieceSquare))
+                                    availableMoves.Add(new Move(blockingPieceSquare, squareToBlock));
+                            }
                         }
                     }
                 }
             }
             else
             {
-                foreach (Square square in squaresWithPieces)
+                foreach (List<Square> pieceSquares in squaresWithPieces)
                 {
-                    IPiece piece = squares[square];
-                    if (piece is King)
+                    foreach (Square square in pieceSquares)
                     {
-                        availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, dangerousPiecesSquares, white));
-
-                    }
-                    else if (piece is not NoPiece && !pinnedPieces.ContainsKey(square))// pinned pieces cannot move
-                    {
-
-                        availableMoves.AddRange( GetAvailableMovesForPiece(square, squares) );
-                    }
-                    else if (piece is not NoPiece && pinnedPieces.ContainsKey(square))
-                    {
-                        List<Move> moves = GetAvailableMovesForPiece(square, squares);
-                        foreach (Move m in moves)
+                        IPiece piece = squares[square];
+                        if (piece is King)
                         {
-                            if (m.To.Equals(pinnedPieces[square]))
-                                availableMoves.Add(m);// pinned piece can take the pinning enemy piece
+                            availableMoves.AddRange(GetSafeMovesForKing(squares, kingSquare, dangerousPiecesSquares, white));
+
+                        }
+                        else if (piece is not NoPiece && !pinnedPieces.ContainsKey(square))// pinned pieces cannot move
+                        {
+
+                            availableMoves.AddRange(GetAvailableMovesForPiece(square, squares));
+                        }
+                        else if (piece is not NoPiece && pinnedPieces.ContainsKey(square))
+                        {
+                            List<Move> moves = GetAvailableMovesForPiece(square, squares);
+                            foreach (Move m in moves)
+                            {
+                                if (m.To.Equals(pinnedPieces[square]))
+                                    availableMoves.Add(m);// pinned piece can take the pinning enemy piece
+                            }
                         }
                     }
                 }

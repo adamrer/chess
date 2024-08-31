@@ -2,7 +2,6 @@
 using System.Net;
 using System.Text;
 using Chess;
-using System.Collections.Immutable;
 namespace ChessClient
 {
     internal class Program
@@ -25,7 +24,7 @@ namespace ChessClient
             {
                 try
                 {
-                    Console.WriteLine($"Socket connected to -> {sender.RemoteEndPoint} ");
+                    Console.WriteLine($"Connected to -> {sender.RemoteEndPoint} ");
 
                     byte[] messageReceived = new byte[1024];
 
@@ -139,9 +138,9 @@ namespace ChessClient
             {
                 client = new ChessClient(ip: Console.ReadLine());
             }
-            catch
+            catch (Exception e)
             {
-                Console.WriteLine("!!! Error connecting to server");
+                Console.WriteLine(e.Message);
                 Console.ReadLine();
                 return;
             }
