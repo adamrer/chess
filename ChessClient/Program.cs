@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using Chess;
+using System.Collections.Immutable;
 namespace ChessClient
 {
     internal class Program
@@ -65,21 +66,8 @@ namespace ChessClient
                         PrintBoard(fen, IsWhite);
                         if (splitMessage.Length == 2)
                         {
-                            if (splitMessage[1] == "WIN")
-                            {
-                                Console.WriteLine("YOU WON");
-                                break;
-                            }
-                            else if (splitMessage[1] == "LOSS")
-                            {
-                                Console.WriteLine("YOU LOST");
-                                break;
-                            }
-                            else if (splitMessage[1] == "DRAW")
-                            {
-                                Console.WriteLine("DRAW");
-                                break;
-                            }
+                            PrintEndOfTheGame(splitMessage[1]);
+                            break;
 
                         }
 
@@ -110,21 +98,8 @@ namespace ChessClient
                         PrintBoard(fen, IsWhite);
                         if (splitMessage.Length == 2)
                         {
-                            if (splitMessage[1] == "WIN")
-                            {
-                                Console.WriteLine("YOU WON");
-                                break;
-                            }
-                            else if (splitMessage[1] == "LOSS")
-                            {
-                                Console.WriteLine("YOU LOST");
-                                break;
-                            }
-                            else if (splitMessage[1] == "DRAW")
-                            {
-                                Console.WriteLine("DRAW");
-                                break;
-                            }
+                            PrintEndOfTheGame(splitMessage[1]);
+                            break;
 
                         }
                     }
@@ -154,10 +129,26 @@ namespace ChessClient
                     sender.Close();
                 }
             }
+
             private void PrintBoard(string fen, bool white)
-            {
+            {//TODO: dont use Board
                 Board board = new Board(fen);
                 board.Print(white);
+            }
+            private void PrintEndOfTheGame(string resutl)
+            {
+                if (resutl == "WIN")
+                {
+                    Console.WriteLine("YOU WON");
+                }
+                else if (resutl == "LOSS")
+                {
+                    Console.WriteLine("YOU LOST");
+                }
+                else if (resutl == "DRAW")
+                {
+                    Console.WriteLine("DRAW");
+                }
             }
         }
         static void Main(string[] args)

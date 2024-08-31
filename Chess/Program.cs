@@ -59,12 +59,30 @@ namespace Chess
 
 
         }
+        private static List<Square> GetAllSquaresWithPiece(ImmutableDictionary<Square, IPiece> squares, bool white)
+        {//TODO: smazat, to tu nemá být
+            List<Square> pieceSquares = new List<Square>();
+
+            foreach (Square square in squares.Keys)
+            {
+                if (squares[square] is not NoPiece && squares[square].IsWhite == white)
+                {
+                    pieceSquares.Add(square);
+                }
+            }
+            return pieceSquares;
+        }
         public static void OfflineMultiplayer()
         {
-            Board board = new Board();
+            Board board = new Board("1n6/p4k1p/2pq4/3P1p2/2Q2P2/2r5/P7/1K1RR3");
 
             while (true)
             {
+                //List<Move> availableMoves = ChessRules.GetAvailableMoves(board.Squares, WhiteIsPlaying(), GetAllSquaresWithPiece(board.Squares, WhiteIsPlaying()));
+                //foreach (var m in availableMoves)
+                //{
+                //    Console.WriteLine($"{board.Squares[m.From].Symbol} {m}");
+                //}
                 board.Print(WhiteIsPlaying());
                 int evaluation = board.Evaluate(WhiteIsPlaying());
                 //stalemate
@@ -142,7 +160,7 @@ namespace Chess
                 if (WhiteIsPlaying() == playerIsWhite)
                 {
                     if (MoveNumber > 2)
-                        Console.WriteLine($"Oponents last move: {aiMove}");
+                        Console.WriteLine($"Opponent's last move: {board.Squares[aiMove.From].Symbol} {aiMove}");
                     Console.WriteLine("You are on the move");
                     string? move = Console.ReadLine();
 
@@ -155,7 +173,7 @@ namespace Chess
                 }
                 else
                 {
-                    Console.Write("Oponent is thinking of the best move");
+                    Console.Write("Opponent is thinking of the best move");
                     aiMove = Zdenda.ChooseBestMove(board.GetSquares());
                     board.MakeMove(aiMove);
 

@@ -18,7 +18,7 @@ namespace Chess
 
         private int CalculateMobilityScore(ImmutableDictionary<Square, IPiece> squares)
         {
-            return ChessRules.GetAvailableMoves(squares, IsWhite, GetAllSquaresWithPiece(squares, IsWhite)).Count / 15;
+            return ChessRules.GetAvailableMoves(squares, IsWhite, GetAllSquaresWithPiece(squares, IsWhite)).Count / 50;
         }
         private int CalculateKingSafetyScore(ImmutableDictionary<Square, IPiece> squares)
         {// TODO: calculate king safety
@@ -84,17 +84,52 @@ namespace Chess
             return pieceSquares;
         }
         
-        private MoveValue EvaluateBestMove(ImmutableDictionary<Square, IPiece> squares, 
+        private MoveValue EvaluateBestMoveParallel(ImmutableDictionary<Square, IPiece> squares, 
             int depth, bool whitePlaying, int alpha, int beta)
         {//minimax
 
+            //int boardEvaluation = ChessRules.EvaluateBoard(squares, whitePlaying);
+            //if (depth == 0 || boardEvaluation != 0)
+            //{
+            //    if (boardEvaluation > 0) // draw
+            //        return new MoveValue(null, 0);
+            //    else if (boardEvaluation < 0) // win
+            //        return new MoveValue(null, int.MaxValue);
+            //    else // leaf, depth
+            //        return new MoveValue(null, EvaluateBoardScore(squares));
+            //}
+
+            MoveValue maxEval = new MoveValue(null, int.MinValue);
+            if (whitePlaying != IsWhite)
+                maxEval.Value = int.MaxValue;
+            var moves = ChessRules.GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying));// TODO: nějak si udržovat, kde jsou figurky?
+
+            Parallel.ForEach(moves, move =>
+            {
+                MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, squares), depth - 1, !whitePlaying, alpha, beta);
+
+                if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval, moves))
+                    return;
+            });
+
+            return maxEval;
+
+
+        }
+        
+        private MoveValue EvaluateBestMove(ImmutableDictionary<Square, IPiece> squares,
+            int depth, bool whitePlaying, int alpha, int beta)
+        {
             int boardEvaluation = ChessRules.EvaluateBoard(squares, whitePlaying);
             if (depth == 0 || boardEvaluation != 0)
             {
                 if (boardEvaluation > 0) // draw
                     return new MoveValue(null, 0);
-                else if (boardEvaluation < 0) // win
-                    return new MoveValue(null, int.MaxValue);
+                else if (boardEvaluation < 0) 
+                    if (whitePlaying == IsWhite)// win
+                        return new MoveValue(null, int.MaxValue);
+                    else
+                        return new MoveValue(null, int.MinValue);
                 else // leaf, depth
                     return new MoveValue(null, EvaluateBoardScore(squares));
             }
@@ -103,61 +138,42 @@ namespace Chess
             if (whitePlaying != IsWhite)
                 maxEval.Value = int.MaxValue;
             var moves = ChessRules.GetAvailableMoves(squares, whitePlaying, GetAllSquaresWithPiece(squares, whitePlaying));// TODO: nějak si udržovat, kde jsou figurky?
-            //foreach (Move move in moves)
-            //{
-            //    MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, squares), depth - 1, !whitePlaying, alpha, beta);
-
-            //    lock (moves)
-            //    {// maxEval and alpha/beta is modified by one thread in time
-            //        if ((whitePlaying == IsWhite && childrenEval.Value > maxEval.Value) || // max
-            //            (whitePlaying != IsWhite && childrenEval.Value < maxEval.Value) || // min
-            //            maxEval.Move == null)
-            //        {
-            //            maxEval.Move = move;
-            //            maxEval.Value = childrenEval.Value;
-            //        }
-            //        if (whitePlaying == IsWhite)
-            //            alpha = Math.Max(alpha, childrenEval.Value);
-            //        else
-            //            beta = Math.Min(beta, childrenEval.Value);
-            //        if (beta <= alpha)
-            //        {// cutoff
-            //            break;
-            //        }
-            //    }
-            //};
-            Parallel.ForEach(moves, move =>
+            foreach (Move move in moves)
             {
                 MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, squares), depth - 1, !whitePlaying, alpha, beta);
 
-                lock (moves)
-                {// maxEval and alpha/beta is modified by one thread in time
-                    if ((whitePlaying == IsWhite && childrenEval.Value > maxEval.Value) || // max
-                        (whitePlaying != IsWhite && childrenEval.Value < maxEval.Value) || // min
-                        maxEval.Move == null)
-                    {
-                        maxEval.Move = move;
-                        maxEval.Value = childrenEval.Value;
-                    }
-                    if (whitePlaying == IsWhite)
-                        alpha = Math.Max(alpha, childrenEval.Value);
-                    else
-                        beta = Math.Min(beta, childrenEval.Value);
-                    if (beta <= alpha)
-                    {// cutoff
-                        return;
-                    }
-                }
-            });
+                if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval, moves))
+                    break;
+            }
 
             return maxEval;
 
-
         }
-
+        private bool MinimaxStep(Move move, int alpha, int beta, bool whitePlaying, MoveValue maxEval, MoveValue childrenEval, object oLock)
+        {// true when cutoff must happen
+            lock (oLock)
+            {// maxEval and alpha/beta is modified by one thread in time
+                if ((whitePlaying == IsWhite && childrenEval.Value > maxEval.Value) || // max
+                    (whitePlaying != IsWhite && childrenEval.Value < maxEval.Value) || // min
+                    maxEval.Move == null)
+                {
+                    maxEval.Move = move;
+                    maxEval.Value = childrenEval.Value;
+                }
+                if (whitePlaying == IsWhite)
+                    alpha = Math.Max(alpha, childrenEval.Value);
+                else
+                    beta = Math.Min(beta, childrenEval.Value);
+                if (beta <= alpha)
+                {// cutoff
+                    return true;
+                }
+            }
+            return false;
+        }
         public Move ChooseBestMove(ImmutableDictionary<Square, IPiece> squares)
         {
-            MoveValue result = EvaluateBestMove(squares, 2, IsWhite, int.MinValue, int.MaxValue);
+            MoveValue result = EvaluateBestMoveParallel(squares, 3, IsWhite, int.MinValue, int.MaxValue);
             return result.Move.GetValueOrDefault();
         }
     }

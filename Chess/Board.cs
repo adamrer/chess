@@ -21,36 +21,92 @@ namespace Chess
         Square? enPassantSquare = null;// jen aby se políčko nemuselo hledat
         Square WhiteKingSquare { get; set; } = (1, 5);
         Square BlackKingSquare { get; set; } = (8, 5);
-        List<Square> WhitePieces = new List<Square>();
-        List<Square> BlackPieces = new List<Square>();
+        public ImmutableDictionary<char, List<Square>> WhitePieces; // keys: piece symbol, values: list of squares where are the pieces
+        public ImmutableDictionary<char, List<Square>> BlackPieces;
         public Board()
         {
             Dictionary<Square, IPiece> squares = new Dictionary<Square, IPiece>();
+            Dictionary<char, List < Square >> whitePieces = new Dictionary<char, List<Square>>();
+            Dictionary<char, List < Square >> blackPieces = new Dictionary<char, List<Square>>();
             for (int i = 1; i < Height + 1; i++)
             {
                 for (int j = 1; j < Width + 1; j++)
                 {
                     Square currentSquare = new Square(i, j);
                     // pawns
-                    if (i == 2) squares.Add(currentSquare, new Pawn());
-                    else if (i == 7) squares.Add(currentSquare, new Pawn(false));
+                    if (i == 2) 
+                    {
+                        squares.Add(currentSquare, new Pawn());
+                        if (!whitePieces.TryAdd((new Pawn()).Symbol, new List<Square>() { currentSquare }))
+                            whitePieces[(new Pawn()).Symbol].Add(currentSquare);
+                    }
+                    else if (i == 7)
+                    {
+                        squares.Add(currentSquare, new Pawn(false));
+                        if (!blackPieces.TryAdd((new Pawn(false)).Symbol, new List<Square>() { currentSquare }))
+                            blackPieces[(new Pawn(false)).Symbol].Add(currentSquare);
+                    }
                     // rooks
-                    else if (i == 1 && (j == 1 || j == 8)) squares.Add(currentSquare, new Rook());
-                    else if (i == 8 && (j == 1 || j == 8)) squares.Add(currentSquare, new Rook(false));
+                    else if (i == 1 && (j == 1 || j == 8))
+                    {
+                        squares.Add(currentSquare, new Rook());
+                        if (!whitePieces.TryAdd((new Rook()).Symbol, new List<Square>() { currentSquare }))
+                            whitePieces[(new Rook()).Symbol].Add(currentSquare);
+                    }
+                    else if (i == 8 && (j == 1 || j == 8))
+                    {
+                        squares.Add(currentSquare, new Rook(false));
+                        if (!blackPieces.TryAdd((new Rook(false)).Symbol, new List<Square>() { currentSquare }))
+                            blackPieces[(new Rook(false)).Symbol].Add(currentSquare);
+                    }
                     // knights
-                    else if (i == 1 && (j == 2 || j == 7)) squares.Add(currentSquare, new Knight() );
-                    else if (i == 8 && (j == 2 || j == 7)) squares.Add(currentSquare, new Knight(false));
+                    else if (i == 1 && (j == 2 || j == 7))
+                    {
+                        squares.Add(currentSquare, new Knight() );
+                        if (!whitePieces.TryAdd((new Knight()).Symbol, new List<Square>() { currentSquare }))
+                            whitePieces[(new Knight()).Symbol].Add(currentSquare);
+                    }
+                    else if (i == 8 && (j == 2 || j == 7))
+                    {
+                        squares.Add(currentSquare, new Knight(false));
+                        if (!blackPieces.TryAdd((new Knight(false)).Symbol, new List<Square>() { currentSquare }))
+                            blackPieces[(new Knight(false)).Symbol].Add(currentSquare);
+                    }
                     // bishops
-                    else if (i == 1 && (j == 3 || j == 6)) squares.Add(currentSquare, new Bishop());
-                    else if (i == 8 && (j == 3 || j == 6)) squares.Add(currentSquare, new Bishop(false));
+                    else if (i == 1 && (j == 3 || j == 6))
+                    {
+                        squares.Add(currentSquare, new Bishop());
+                        if (!whitePieces.TryAdd((new Bishop()).Symbol, new List<Square>() { currentSquare }))
+                            whitePieces[(new Bishop()).Symbol].Add(currentSquare);
+                    }
+                    else if (i == 8 && (j == 3 || j == 6))
+                    {
+                        squares.Add(currentSquare, new Bishop(false));
+                        if (!blackPieces.TryAdd((new Bishop(false)).Symbol, new List<Square>() { currentSquare }))
+                            blackPieces[(new Bishop(false)).Symbol].Add(currentSquare);
+                    }
                     // queens
-                    else if (i == 1 && j == 4) squares.Add(currentSquare, new Queen());
-                    else if (i == 8 && j == 4) squares.Add(currentSquare, new Queen(false));
+                    else if (i == 1 && j == 4)
+                    {
+                        squares.Add(currentSquare, new Queen());
+                        whitePieces.Add((new Queen()).Symbol, new List<Square>() { currentSquare });
+                    }
+                    else if (i == 8 && j == 4)
+                    {
+                        squares.Add(currentSquare, new Queen(false));
+                        whitePieces.Add((new Queen(false)).Symbol, new List<Square>() { currentSquare });
+                    }
                     // kings
                     else if (i == 1 && j == 5)
+                    {
                         squares.Add(currentSquare, new King());
+                        whitePieces.Add((new King()).Symbol, new List<Square>() { currentSquare });
+                    }
                     else if (i == 8 && j == 5)
+                    {
                         squares.Add(currentSquare, new King(false));
+                        whitePieces.Add((new King(false)).Symbol, new List<Square>() { currentSquare });
+                    }
                     // empty squares
                     else squares.Add(currentSquare, new NoPiece());
 
@@ -58,6 +114,9 @@ namespace Chess
 
             }
             Squares = squares.ToImmutableDictionary();
+            WhitePieces = whitePieces.ToImmutableDictionary();
+            BlackPieces = blackPieces.ToImmutableDictionary();
+
         }
         public Board(string fen)
         {

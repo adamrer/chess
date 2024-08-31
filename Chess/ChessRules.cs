@@ -458,12 +458,13 @@ namespace Chess
                         foreach (Square pieceCheckingKing in piecesCheckingKing)
                         {
                             bool pieceCheckingKingCanBeTaken = squares[kingSquare].MoveVectors.Contains(pieceCheckingKing);
-                            if ((squares[pieceCheckingKing] is Rook || squares[pieceCheckingKing] is Queen) && pieceCheckingKingCanBeTaken)
+                            if ((squares[pieceCheckingKing] is Rook || squares[pieceCheckingKing] is Queen) && 
+                                (pieceCheckingKing.Row == square.Row || pieceCheckingKing.Column == square.Column) && 
+                                !pieceCheckingKingCanBeTaken)
                             {
-                                if (pieceCheckingKing.Row == square.Row || pieceCheckingKing.Column == square.Column)
-                                    goto NEXTSQUARE; // enemy piece could still attack this square after moving king to this square (same row/column as the rook/queen)
+                                goto NEXTSQUARE; // enemy piece could still attack this square after moving king to this square (same row/column as the rook/queen)
                             }
-                            else if ((squares[pieceCheckingKing] is Bishop || squares[pieceCheckingKing] is Queen) && pieceCheckingKingCanBeTaken)
+                            else if ((squares[pieceCheckingKing] is Bishop || squares[pieceCheckingKing] is Queen) && !pieceCheckingKingCanBeTaken)
                             {// if we are here, queen is checking king diagonally
                                 (int, int) checkingVector = (kingSquare.Row - pieceCheckingKing.Row, kingSquare.Column - pieceCheckingKing.Column);
                                 (int, int) checkingVectorOne = (checkingVector.Item1 / Math.Abs(checkingVector.Item1), checkingVector.Item2 / Math.Abs(checkingVector.Item2));
@@ -475,9 +476,9 @@ namespace Chess
                             }
                         }
                         safeMoves.Add(new Move(kingSquare, square));// has a safe square
-                    NEXTSQUARE:;
                     }
                 }
+                NEXTSQUARE:;
             }
             return safeMoves;
         }
