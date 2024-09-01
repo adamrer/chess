@@ -50,7 +50,7 @@ namespace ChessClient
                         string fen = splitMessage[0];
                         
                         Console.Clear();
-                        PrintBoard(fen, IsWhite);
+                        PrintBoard(fen);
                         if (splitMessage.Length == 2)
                         {
                             PrintEndOfTheGame(splitMessage[1]);
@@ -84,7 +84,7 @@ namespace ChessClient
                         fen = splitMessage[0];
 
                         Console.Clear();
-                        PrintBoard(fen, IsWhite);
+                        PrintBoard(fen);
                         if (splitMessage.Length == 2)
                         {
                             PrintEndOfTheGame(splitMessage[1]);
@@ -108,10 +108,102 @@ namespace ChessClient
                 }
             }
 
-            private void PrintBoard(string fen, bool white)
-            {//TODO: dont use Board
-                Board board = new Board(fen);
-                board.Print(white);
+            private void PrintBoard(string fen)
+            {
+                if (!IsWhite)
+                {// reverse fen
+                    char[] charArray = fen.ToCharArray();
+                    Array.Reverse(charArray);
+                    fen = new string(charArray);
+                }
+
+                int squareIndex = 1;
+
+                Console.WriteLine();
+                if (!IsWhite)
+                    Console.Write("1 ");
+                else
+                    Console.Write("8 ");
+                for (int charIndex = 0; charIndex < fen.Length; charIndex++)
+                {
+                    char ch = fen[charIndex];
+                    if (squareIndex % 2 != 0)
+                    {
+                        Console.BackgroundColor = ConsoleColor.Gray;
+                        Console.ForegroundColor = ConsoleColor.Black;
+                    }
+                    else
+                    {
+                        Console.BackgroundColor = ConsoleColor.DarkMagenta;
+                        Console.ForegroundColor = ConsoleColor.White;
+                    }
+                    if (char.IsDigit(ch))
+                    {
+                        int whiteSpaceCount = int.Parse(ch.ToString());
+                        for (int i = whiteSpaceCount; i > 0; i--)
+                        {
+                            if (squareIndex % 2 != 0)
+                            {
+                                Console.BackgroundColor = ConsoleColor.Gray;
+                                Console.ForegroundColor = ConsoleColor.Black;
+                            }
+                            else
+                            {
+                                Console.BackgroundColor = ConsoleColor.DarkMagenta;
+                                Console.ForegroundColor = ConsoleColor.White;
+                            }
+                            Console.Write(" ", Console.BackgroundColor);
+                            squareIndex++;
+
+                            Console.BackgroundColor = ConsoleColor.Black;
+                            Console.ForegroundColor = ConsoleColor.White;
+
+                            Console.Write(' ');
+                        }
+                    }
+                    else if (char.IsLetter(ch))
+                    {
+                        Console.Write(ch.ToString(), Console.BackgroundColor);
+                        squareIndex++;
+                        Console.BackgroundColor = ConsoleColor.Black;
+                        Console.ForegroundColor = ConsoleColor.White;
+                        Console.Write(' ');
+
+                    }
+                    else if (ch == '/')
+                    {
+                        Console.WriteLine();
+
+                        Console.BackgroundColor = ConsoleColor.Black;
+                        Console.ForegroundColor = ConsoleColor.White;
+
+                        if (!IsWhite)
+                            Console.Write(squareIndex % 8 + 1);
+                        else
+                            Console.Write(8 - (squareIndex) / 8);
+                        Console.Write(' ');
+                        squareIndex++;
+                    }
+
+                    Console.BackgroundColor = ConsoleColor.Black;
+                    Console.ForegroundColor = ConsoleColor.White;
+                    
+                }
+                Console.WriteLine();
+
+                // column letters
+                Console.Write("  ");
+                for (int i = 0; i < 8; i++)
+                {
+                    if (IsWhite)
+                        Console.Write((char)('a' + i));
+                    else
+                        Console.Write((char)('h' - i));
+                    Console.Write(' ');
+                }
+                Console.WriteLine();
+                Console.WriteLine("---------------------");
+                Console.WriteLine();
             }
             private void PrintEndOfTheGame(string result)
             {

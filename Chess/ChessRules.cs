@@ -454,7 +454,17 @@ namespace Chess
                     {
                         foreach (Square pieceCheckingKing in piecesCheckingKing)
                         {
-                            bool pieceCheckingKingCanBeTaken = squares[kingSquare].MoveVectors.Contains(pieceCheckingKing);
+                            // determine if king can take the checking piece
+                            bool pieceCheckingKingCanBeTaken = false;
+                            foreach ((int, int) mVector in squares[kingSquare].MoveVectors)
+                            {
+                                Square accessibleSquare = new Square(kingSquare.Row + mVector.Item1, kingSquare.Column + mVector.Item2);
+                                if (accessibleSquare.Equals(piecesCheckingKing))
+                                {
+                                    pieceCheckingKingCanBeTaken = true;
+                                    break;
+                                }
+                            }
                             if ((squares[pieceCheckingKing] is Rook || squares[pieceCheckingKing] is Queen) && 
                                 (pieceCheckingKing.Row == square.Row || pieceCheckingKing.Column == square.Column) && 
                                 !pieceCheckingKingCanBeTaken)
@@ -603,6 +613,8 @@ namespace Chess
 
             pieceMoving.Moved = true;
             
+            Square? enpassant = null;
+
             //promotion to queen
             if (pieceMoving is Pawn && ((pieceMoving.IsWhite && move.To.Row == Height) || (!pieceMoving.IsWhite && move.To.Row == 1)))
             {
@@ -632,9 +644,9 @@ namespace Chess
             // en passant
             else if(pieceMoving is Pawn && squares[move.To] is EnPassant )
             {
-                Square prayPawnSquare = new Square(move.To.Row - 1, move.To.Column);
+                Square preyPawnSquare = new Square(move.To.Row + 1, move.To.Column);
                 if (!squares[move.To].IsWhite)
-                    prayPawnSquare = new Square(move.To.Row + 1, move.To.Column);
+                    preyPawnSquare = new Square(move.To.Row - 1, move.To.Column);
                 
                 for (int i = 1; i < Height + 1; i++)
                 {
@@ -649,7 +661,7 @@ namespace Chess
                             else
                                 blackPieceBuilder.Add(newSquaresBuilder[currentSquare].Symbol, new List<Square>() { currentSquare });
                         }
-                        else if (prayPawnSquare.Equals(currentSquare))
+                        else if (preyPawnSquare.Equals(currentSquare))
                             newSquaresBuilder.Add(new(currentSquare, new NoPiece())); // pawn taken
                         else if (move.From.Equals(currentSquare))
                             newSquaresBuilder.Add(new(currentSquare, new NoPiece())); // remove piece
@@ -706,7 +718,17 @@ namespace Chess
                 }
             }
             else
-            {// TODO: přidat enpassant square
+            {
+                if (pieceMoving is Pawn)
+                {
+                    List<Square> squaresBetween = GetSquaresBetweenSquares(move.From, move.To);
+                    if (squaresBetween.Count == 1) // long pawn move, create enpassant
+                    {
+                        enpassant = squaresBetween[0];
+                        newSquaresBuilder.Add(enpassant.GetValueOrDefault(), new EnPassant(pieceMoving.IsWhite));
+                    }
+
+                }
                 for (int i = 1; i < Height + 1; i++)
                 {
                     for (int j = 1; j < Width + 1; j++)
@@ -722,24 +744,26 @@ namespace Chess
                         }
                         else if (move.From.Equals(currentSquare))
                             newSquaresBuilder.Add(new(currentSquare, new NoPiece()));// remove piece
-                        else
+                        else if (!currentSquare.Equals(enpassant))
                             newSquaresBuilder.Add(new(currentSquare, squares[currentSquare]));
                     }
                 }
             }
+            
+            if (board.EnPassantSquare != null)
+                newSquaresBuilder[board.EnPassantSquare.GetValueOrDefault()] = new NoPiece();// remove old enpassant square
 
             ImmutableDictionary<Square, IPiece> newSquares = newSquaresBuilder.ToImmutable();
             ImmutableDictionary<char, List<Square>> newWhitePiecePositions = AddUnchangedPositions(newSquares, board.WhitePieces, whitePieceBuilder);
             ImmutableDictionary<char, List<Square>> newBlackPiecePositions = AddUnchangedPositions(newSquares, board.BlackPieces, blackPieceBuilder);
 
 
-            return new Board(newSquares, newWhitePiecePositions, newBlackPiecePositions, null); // TODO: řešit enpassant
+            return new Board(newSquares, newWhitePiecePositions, newBlackPiecePositions, enpassant);
         }
         private static ImmutableDictionary<char, List<Square>> AddUnchangedPositions(ImmutableDictionary<Square, IPiece> newSquares, 
             ImmutableDictionary<char, List<Square>> oldPiecePositions, 
             ImmutableDictionary<char, List<Square>>.Builder piecesBuilder)
         {
-            // update piece positions
             foreach (char symbol in oldPiecePositions.Keys)
             {
                 foreach (Square pieceSquare in oldPiecePositions[symbol])

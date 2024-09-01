@@ -21,13 +21,26 @@ namespace Chess
             return ChessRules.GetAvailableMoves(board, IsWhite).Count / 50;
         }
         private int CalculateKingSafetyScore(Board board, bool white)
-        {// TODO: calculate king safety
+        {
             Square kingSquare = board.WhitePieces['K'][0];
             if (!white)
                 kingSquare = board.BlackPieces['k'][0];
-            
 
-            return 0;
+            int score = 0;
+            foreach ((int, int) moveVector in board.Squares[kingSquare].MoveVectors)
+            {
+                Square square = new Square(kingSquare.Row + moveVector.Item1, kingSquare.Column + moveVector.Item2);
+                if (board.Squares.ContainsKey(square) && board.Squares[square] is not NoPiece) 
+                {
+                    score += 2;
+                }
+                else if (!board.Squares.ContainsKey(square))
+                {
+                    score += 1;
+                }
+
+            }
+            return score;
         }
         private int CalculateMaterialScore(Board board)
         {
@@ -38,9 +51,9 @@ namespace Chess
                 if (piece is not NoPiece )
                 {
                     if (piece.IsWhite == IsWhite)
-                        score += piece.Value;
+                        score += piece.Value *2;
                     else
-                        score -= piece.Value;
+                        score -= piece.Value *2;
                 }
             }
             return score;
@@ -83,7 +96,7 @@ namespace Chess
             MoveValue maxEval = new MoveValue(null, int.MinValue);
             if (whitePlaying != IsWhite)
                 maxEval.Value = int.MaxValue;
-            var moves = ChessRules.GetAvailableMoves(board, whitePlaying);// TODO: nějak si udržovat, kde jsou figurky?
+            var moves = ChessRules.GetAvailableMoves(board, whitePlaying);
 
             Parallel.ForEach(moves, move =>
             {

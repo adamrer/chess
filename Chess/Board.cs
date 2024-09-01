@@ -2,12 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Data.Common;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 
 namespace Chess
@@ -18,7 +12,7 @@ namespace Chess
         int Width { get; init; } = 8;
         int Height { get; init; } = 8;
         public ImmutableDictionary<Square, IPiece> Squares { get; set; }
-        Square? enPassantSquare = null;// jen aby se políčko nemuselo hledat
+        public Square? EnPassantSquare = null;// jen aby se políčko nemuselo hledat
         public ImmutableDictionary<char, List<Square>> WhitePieces; // keys: piece symbol, values: list of squares where are the pieces
         public ImmutableDictionary<char, List<Square>> BlackPieces;
         public Board()
@@ -124,7 +118,7 @@ namespace Chess
             Squares = squares;
             WhitePieces = whitePieces;
             BlackPieces = blackPieces;
-            this.enPassantSquare = enPassantSquare;
+            this.EnPassantSquare = enPassantSquare;
         }
         public Board(string fen)
         {
@@ -331,7 +325,7 @@ namespace Chess
             Squares = newBoard.Squares;
             WhitePieces = newBoard.WhitePieces;
             BlackPieces = newBoard.BlackPieces;
-            enPassantSquare = newBoard.enPassantSquare;
+            EnPassantSquare = newBoard.EnPassantSquare;
         }
     }
 }

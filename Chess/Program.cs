@@ -65,11 +65,6 @@ namespace Chess
 
             while (true)
             {
-                //List<Move> availableMoves = ChessRules.GetAvailableMoves(board.Squares, WhiteIsPlaying(), GetAllSquaresWithPiece(board.Squares, WhiteIsPlaying()));
-                //foreach (var m in availableMoves)
-                //{
-                //    Console.WriteLine($"{board.Squares[m.From].Symbol} {m}");
-                //}
                 board.Print(WhiteIsPlaying());
                 int evaluation = board.Evaluate(WhiteIsPlaying());
                 //stalemate
@@ -115,7 +110,23 @@ namespace Chess
         }
         public static void SoloAI()
         {
-            bool playerIsWhite = true;// TODO: vybírání barvy
+            bool playerIsWhite = true;
+
+            // choosing color
+            string? color;
+            while (true)
+            {
+                Console.Clear();
+                Console.Write("Choose color (W/B): ");
+                color = Console.ReadLine();
+                if (color != null && color.Length == 1 &&
+                    (char.ToUpper(color[0]) == 'W' || char.ToUpper(color[0]) == 'B'))
+                    break;
+
+            }
+            if (char.ToUpper(color[0]) == 'B')
+                playerIsWhite = false;
+
             Board board = new Board();
             ChessAI Zdenda = new ChessAI(!playerIsWhite);
 
@@ -123,7 +134,7 @@ namespace Chess
 
             while (true)
             {
-                board.Print();
+                board.Print(playerIsWhite);
                 int evaluation = board.Evaluate(WhiteIsPlaying());
 
                 //stalemate
@@ -135,11 +146,11 @@ namespace Chess
                 //loss
                 else if (evaluation < 0)
                 {
-                    Console.WriteLine("YOU ");
-                    if (!playerIsWhite)
-                        Console.Write("WON");
+                    Console.Write("YOU ");
+                    if (playerIsWhite != WhiteIsPlaying())
+                        Console.WriteLine("WON");
                     else
-                        Console.Write("LOST");
+                        Console.WriteLine("LOST");
                     Console.ReadLine();
                     break;
                 }
