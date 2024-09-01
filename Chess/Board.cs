@@ -202,7 +202,7 @@ namespace Chess
 
             return true;
         }
-        public void Print(bool forWhite = true)
+        public void Print(bool forWhite = true, Square? movedPiece = null)
         {
             Console.WriteLine();
             int row;
@@ -250,7 +250,11 @@ namespace Chess
                         Console.BackgroundColor = ConsoleColor.DarkMagenta;
                         Console.ForegroundColor = ConsoleColor.White;
                     }
-
+                    if (movedPiece != null && movedPiece.GetValueOrDefault().Equals(new Square(row, column)))
+                    {
+                        Console.BackgroundColor = ConsoleColor.Yellow;
+                        Console.ForegroundColor = ConsoleColor.Black;
+                    }
                     Console.Write(Squares[(row, column)].Symbol.ToString(), Console.BackgroundColor);
 
                     Console.BackgroundColor = ConsoleColor.Black;

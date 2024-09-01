@@ -77,18 +77,24 @@ namespace Chess.Network
 
                 Board board = new Board();
 
+                string opponentsMove = null;
+
+                string? move = null;
                 // playing
                 while (true)
                 {
-                    board.Print(IsWhite);
+                    if (opponentsMove == null)
+                        board.Print(IsWhite);
+                    else
+                        board.Print(IsWhite, new Square(opponentsMove[opponentsMove.Length-1] - '0', (char)opponentsMove[opponentsMove.Length-2]));
 
                     if (!skipTurn)
                     {
-                        if (PrintEvaluation(board))
+                        if (PrintEvaluation(board, move))
                             break;
 
                         Console.Write("Your turn: ");
-                        string? move = Console.ReadLine();
+                        move = Console.ReadLine();
 
                         if (move != null && board.TryMakeMove(move, WhiteIsPlaying()))
                         {
@@ -102,21 +108,25 @@ namespace Chess.Network
                         }
                     
                         Console.Clear();
-                        board.Print(IsWhite);
+                        board.Print(IsWhite, new Square(move![move.Length-1] - '0', (char)move[move.Length - 2]));
                     }
                     skipTurn = false;
 
+
                     // send board
+
                     string response = board.GetFen();
+                    if (move != null)
+                        response += ' ' + move.Substring(move.Length - 2);
+                        
                     SendToClient(response);
 
-                    if (PrintEvaluation(board))
+                    if (PrintEvaluation(board, move))
                         break;
 
                     Console.WriteLine("Opponent's move");
                     // receive move
                     byte[] bytes = new Byte[1024];
-                    string opponentsMove = null;
                     int numByte = listenerSocket.Receive(bytes);
                     opponentsMove = Encoding.ASCII.GetString(bytes, 0, numByte);
                     
@@ -128,11 +138,10 @@ namespace Chess.Network
                     }
 
                     MoveNumber++;
-                    response = board.GetFen();
+                    response = board.GetFen() + ' ' + opponentsMove.Substring(opponentsMove.Length-2);
                     SendToClient(response);
 
 
-                    Console.WriteLine($"Text received -> {opponentsMove}");
                     if (opponentsMove == "<EOC>")
                     {
                         break;
@@ -142,7 +151,7 @@ namespace Chess.Network
 
             }
 
-            catch (Exception e)
+            catch (SocketException e)
             {
                 Console.WriteLine(e.Message.ToString());
                 Console.ReadLine();
@@ -152,14 +161,14 @@ namespace Chess.Network
                 listener.Stop();
             }
         }
-        private bool PrintEvaluation(Board board)
+        private bool PrintEvaluation(Board board, string move)
         {// false if the game ended
             int evaluation = board.Evaluate(WhiteIsPlaying());
             //stalemate
             if (evaluation > 0)
             {
                 Console.WriteLine("DRAW");
-                SendToClient(board.GetFen() + " DRAW");
+                SendToClient(board.GetFen() + ' ' + move.Substring(move.Length - 2) + " DRAW");
                 return true;
             }
             //loss
@@ -170,12 +179,12 @@ namespace Chess.Network
                 if (WhiteIsPlaying() != IsWhite)
                 {
                     Console.WriteLine("WON");
-                    SendToClient(board.GetFen() + " LOSS");
+                    SendToClient(board.GetFen() + ' ' + move.Substring(move.Length - 2) + " LOSS");
                 }
                 else
                 {
                     Console.WriteLine("LOST");
-                    SendToClient(board.GetFen() + " WIN");
+                    SendToClient(board.GetFen() + ' ' + move.Substring(move.Length - 2) + " WIN");
                 }
                 Console.ReadLine();
                 return true;

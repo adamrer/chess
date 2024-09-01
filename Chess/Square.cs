@@ -17,6 +17,9 @@ namespace Chess
         public static implicit operator (int, int)(Square square) => (square.Row, square.Column);
         public static implicit operator Square((int, int) coordinates) => new Square(coordinates.Item1, coordinates.Item2);
 
+        public Square(int row, char column) : this(row, column - 'a' + 1)
+        {
+        }
         public override string ToString()
         {
             return $"{(char)('a'+Column-1)}{Row}";

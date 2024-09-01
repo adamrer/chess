@@ -50,10 +50,14 @@ namespace ChessClient
                         string fen = splitMessage[0];
                         
                         Console.Clear();
-                        PrintBoard(fen);
-                        if (splitMessage.Length == 2)
+                        if (splitMessage.Length == 1)
+                            PrintBoard(fen);
+                        else
+                            PrintBoard(fen, splitMessage[1]);
+
+                        if (splitMessage.Length == 3)// length 3 -> end
                         {
-                            PrintEndOfTheGame(splitMessage[1]);
+                            PrintEndOfTheGame(splitMessage[2]);
                             break;
 
                         }
@@ -84,10 +88,10 @@ namespace ChessClient
                         fen = splitMessage[0];
 
                         Console.Clear();
-                        PrintBoard(fen);
-                        if (splitMessage.Length == 2)
+                        PrintBoard(fen, splitMessage[1]);
+                        if (splitMessage.Length == 3)
                         {
-                            PrintEndOfTheGame(splitMessage[1]);
+                            PrintEndOfTheGame(splitMessage[2]);
                             break;
 
                         }
@@ -97,7 +101,7 @@ namespace ChessClient
 
                 }
 
-                catch (Exception e)
+                catch (SocketException e)
                 {
                     Console.WriteLine(e.Message);
                     Console.ReadLine();
@@ -108,8 +112,14 @@ namespace ChessClient
                 }
             }
 
-            private void PrintBoard(string fen)
+            private void PrintBoard(string fen, string? movedPiece = null)
             {
+
+                int movedPieceSquareIndex = -1;
+                if (movedPiece != null && IsWhite)
+                    movedPieceSquareIndex = (movedPiece[0] - 'a' + 1) + (9 - int.Parse(movedPiece[1].ToString())-1) * 9;
+                else if (movedPiece != null && !IsWhite)
+                    movedPieceSquareIndex = (9 - (movedPiece[0] - 'a' + 1)) + ((int.Parse(movedPiece[1].ToString())-1)) * 9;
                 if (!IsWhite)
                 {// reverse fen
                     char[] charArray = fen.ToCharArray();
@@ -163,6 +173,11 @@ namespace ChessClient
                     }
                     else if (char.IsLetter(ch))
                     {
+                        if (squareIndex == movedPieceSquareIndex)
+                        {
+                            Console.BackgroundColor = ConsoleColor.Yellow;
+                            Console.ForegroundColor = ConsoleColor.Black;
+                        }
                         Console.Write(ch.ToString(), Console.BackgroundColor);
                         squareIndex++;
                         Console.BackgroundColor = ConsoleColor.Black;

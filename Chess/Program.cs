@@ -62,10 +62,13 @@ namespace Chess
         public static void OfflineMultiplayer()
         {
             Board board = new Board();
-
+            string? move = null;
             while (true)
             {
-                board.Print(WhiteIsPlaying());
+                if (move == null)
+                    board.Print(WhiteIsPlaying());
+                else
+                    board.Print(WhiteIsPlaying(), new Square(move[move.Length-1] - '0', (char)move[move.Length - 2]));
                 int evaluation = board.Evaluate(WhiteIsPlaying());
                 //stalemate
                 if (evaluation > 0)
@@ -90,7 +93,7 @@ namespace Chess
                     Console.Write("Black ");
                 Console.WriteLine("is on the move");
 
-                string? move = Console.ReadLine();
+                move = Console.ReadLine();
 
                 if (move != null && board.TryMakeMove(move, WhiteIsPlaying()))
                 {
@@ -111,6 +114,7 @@ namespace Chess
         public static void SoloAI()
         {
             bool playerIsWhite = true;
+            string? move = null;
 
             // choosing color
             string? color;
@@ -134,7 +138,13 @@ namespace Chess
 
             while (true)
             {
-                board.Print(playerIsWhite);
+                if (move == null)
+                    board.Print(playerIsWhite);
+                else if (WhiteIsPlaying() == playerIsWhite)
+                    board.Print(playerIsWhite, aiMove.To);
+                else
+                    board.Print(playerIsWhite, new Square(move[move.Length - 1] - '0', (char)move[move.Length - 2]));
+
                 int evaluation = board.Evaluate(WhiteIsPlaying());
 
                 //stalemate
@@ -158,9 +168,8 @@ namespace Chess
                 if (WhiteIsPlaying() == playerIsWhite)
                 {
                     if (MoveNumber > 2)
-                        Console.WriteLine($"Opponent's last move: {board.Squares[aiMove.To].Symbol} {aiMove}");
                     Console.WriteLine("You are on the move");
-                    string? move = Console.ReadLine();
+                    move = Console.ReadLine();
 
                     if (move == null || !board.TryMakeMove(move, WhiteIsPlaying()))
                     {
