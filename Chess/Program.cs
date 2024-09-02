@@ -1,4 +1,10 @@
-﻿using Chess.Network;
+﻿// Šachy
+// Adam Řeřicha, II. ročník
+// letní semestr 2023/24
+// Pokročilé programování v jazyce C# NPRG038
+
+
+using Chess.Network;
 using Chess.Pieces;
 using System.Collections.Immutable;
 
