@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Chess
 {
-    public struct Move
+    internal struct Move
     {
         public Square From { get; init; }
         public Square To { get; init; }

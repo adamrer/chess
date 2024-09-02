@@ -90,7 +90,7 @@ namespace Chess.Network
 
                     if (!skipTurn)
                     {
-                        if (PrintEvaluation(board, move))
+                        if (PrintEvaluation(board, move!))
                             break;
 
                         Console.Write("Your turn: ");

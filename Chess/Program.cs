@@ -20,7 +20,7 @@ namespace Chess
                     Console.WriteLine("CHOOSE GAME MODE: \n ------------");
                     Console.WriteLine("1) offline multiplayer");
                     Console.WriteLine("2) solo against AI");
-                    Console.WriteLine("3) online multiplayer");
+                    Console.WriteLine("3) LAN multiplayer");
                     Console.WriteLine("4) exit");
                     Console.WriteLine();
 
@@ -47,7 +47,7 @@ namespace Chess
                         SoloAI();
                         break;
                     case 3:
-                        OnlineMultiplayer();
+                        NetworkMultiplayer();
                         break;
                     case 4:
                         return;
@@ -68,7 +68,7 @@ namespace Chess
                 if (move == null)
                     board.Print(WhiteIsPlaying());
                 else
-                    board.Print(WhiteIsPlaying(), new Square(move[move.Length-1] - '0', (char)move[move.Length - 2]));
+                    board.Print(WhiteIsPlaying(), new Square(move[move.Length-1] - '0', (char)char.ToLower(move[move.Length - 2])));
                 int evaluation = board.Evaluate(WhiteIsPlaying());
                 //stalemate
                 if (evaluation > 0)
@@ -143,7 +143,7 @@ namespace Chess
                 else if (WhiteIsPlaying() == playerIsWhite)
                     board.Print(playerIsWhite, aiMove.To);
                 else
-                    board.Print(playerIsWhite, new Square(move[move.Length - 1] - '0', (char)move[move.Length - 2]));
+                    board.Print(playerIsWhite, new Square(move[move.Length - 1] - '0', (char)char.ToLower(move[move.Length - 2])));
 
                 int evaluation = board.Evaluate(WhiteIsPlaying());
 
@@ -192,7 +192,7 @@ namespace Chess
 
             }
         }
-        public static void OnlineMultiplayer()
+        public static void NetworkMultiplayer()
         {
             ChessServer server = new ChessServer();
             server.Run();

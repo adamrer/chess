@@ -2,9 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Chess
 {
@@ -18,7 +15,7 @@ namespace Chess
 
         private int CalculateMobilityScore(Board board)
         {
-            return ChessRules.GetAvailableMoves(board, IsWhite).Count / 50;
+            return ChessRules.GetAvailableMoves(board, IsWhite).Count / 10;
         }
         private int CalculateKingSafetyScore(Board board, bool white)
         {
@@ -32,7 +29,7 @@ namespace Chess
                 Square square = new Square(kingSquare.Row + moveVector.Item1, kingSquare.Column + moveVector.Item2);
                 if (board.Squares.ContainsKey(square) && board.Squares[square] is not NoPiece) 
                 {
-                    score += 2;
+                    score += 1;
                 }
                 else if (!board.Squares.ContainsKey(square))
                 {
@@ -51,9 +48,9 @@ namespace Chess
                 if (piece is not NoPiece )
                 {
                     if (piece.IsWhite == IsWhite)
-                        score += piece.Value *2;
+                        score += piece.Value *3;
                     else
-                        score -= piece.Value *2;
+                        score -= piece.Value *3;
                 }
             }
             return score;
@@ -102,7 +99,7 @@ namespace Chess
             {
                 MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, board), depth - 1, !whitePlaying, alpha, beta);
 
-                if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval, moves))
+                if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval))
                     return;
             });
 
@@ -136,32 +133,29 @@ namespace Chess
             {
                 MoveValue childrenEval = EvaluateBestMove(ChessRules.MakeMove(move, board), depth - 1, !whitePlaying, alpha, beta);
 
-                if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval, moves))
+                if (MinimaxStep(move, alpha, beta, whitePlaying, maxEval, childrenEval))
                     break;
             }
 
             return maxEval;
 
         }
-        private bool MinimaxStep(Move move, int alpha, int beta, bool whitePlaying, MoveValue maxEval, MoveValue childrenEval, object oLock)
+        private bool MinimaxStep(Move move, int alpha, int beta, bool whitePlaying, MoveValue maxEval, MoveValue childrenEval)
         {// true when cutoff must happen
-            lock (oLock)
-            {// maxEval and alpha/beta is modified by one thread in time
-                if ((whitePlaying == IsWhite && childrenEval.Value > maxEval.Value) || // max
-                    (whitePlaying != IsWhite && childrenEval.Value < maxEval.Value) || // min
-                    maxEval.Move == null)
-                {
-                    maxEval.Move = move;
-                    maxEval.Value = childrenEval.Value;
-                }
-                if (whitePlaying == IsWhite)
-                    alpha = Math.Max(alpha, childrenEval.Value);
-                else
-                    beta = Math.Min(beta, childrenEval.Value);
-                if (beta <= alpha)
-                {// cutoff
-                    return true;
-                }
+            if ((whitePlaying == IsWhite && childrenEval.Value > maxEval.Value) || // max
+                (whitePlaying != IsWhite && childrenEval.Value < maxEval.Value) || // min
+                maxEval.Move == null)
+            {
+                maxEval.Move = move;
+                maxEval.Value = childrenEval.Value;
+            }
+            if (whitePlaying == IsWhite)
+                alpha = Math.Max(alpha, childrenEval.Value);
+            else
+                beta = Math.Min(beta, childrenEval.Value);
+            if (beta <= alpha)
+            {// cutoff
+                return true;
             }
             return false;
         }

@@ -110,7 +110,7 @@ namespace Chess
             if (text.Length != 2)
                 throw new ArgumentException();
 
-            int column = text[0] + 1 - 'a';
+            int column = char.ToLower(text[0]) + 1 - 'a';
             int row = text[1] - '0';
 
             if (column < 1 || column > Width ||
@@ -124,19 +124,6 @@ namespace Chess
 
             throw new ArgumentException();
 
-        }
-        private static List<Square> GetAllSquaresWithPiece(ImmutableDictionary<Square, IPiece> squares, bool white)
-        {
-            List<Square> pieceSquares = new List<Square>();
-
-            foreach (Square square in squares.Keys)
-            {
-                if (squares[square] is not NoPiece && squares[square].IsWhite == white)
-                {
-                    pieceSquares.Add(square);
-                }
-            }
-            return pieceSquares;
         }
         private static IPiece GetPiece(char pieceSymbol, bool whitePlaying)
         {
@@ -581,6 +568,27 @@ namespace Chess
             }
             return pinnedPieces;
         }
+        private static ImmutableDictionary<char, List<Square>> AddUnchangedPositions(ImmutableDictionary<Square, IPiece> newSquares, 
+            ImmutableDictionary<char, List<Square>> oldPiecePositions, 
+            ImmutableDictionary<char, List<Square>>.Builder piecesBuilder)
+        {
+            foreach (char symbol in oldPiecePositions.Keys)
+            {
+                foreach (Square pieceSquare in oldPiecePositions[symbol])
+                {
+                    if (newSquares[pieceSquare].Symbol == symbol)
+                    {// copying the unchanged piece positions
+                        if (!piecesBuilder.TryAdd(symbol, new List<Square>() { pieceSquare }))
+                        {
+                            piecesBuilder[symbol].Add(pieceSquare);
+                        }
+                    }
+
+                }
+            }
+
+            return piecesBuilder.ToImmutable();
+        }
 
         public static int EvaluateBoard(Board board, bool whitePlaying)
         {// returns: greater than zero - draw, less than zero - player lost, zero - game continues
@@ -759,27 +767,6 @@ namespace Chess
 
 
             return new Board(newSquares, newWhitePiecePositions, newBlackPiecePositions, enpassant);
-        }
-        private static ImmutableDictionary<char, List<Square>> AddUnchangedPositions(ImmutableDictionary<Square, IPiece> newSquares, 
-            ImmutableDictionary<char, List<Square>> oldPiecePositions, 
-            ImmutableDictionary<char, List<Square>>.Builder piecesBuilder)
-        {
-            foreach (char symbol in oldPiecePositions.Keys)
-            {
-                foreach (Square pieceSquare in oldPiecePositions[symbol])
-                {
-                    if (newSquares[pieceSquare].Symbol == symbol)
-                    {// copying the unchanged piece positions
-                        if (!piecesBuilder.TryAdd(symbol, new List<Square>() { pieceSquare }))
-                        {
-                            piecesBuilder[symbol].Add(pieceSquare);
-                        }
-                    }
-
-                }
-            }
-
-            return piecesBuilder.ToImmutable();
         }
         public static List<Move> GetAvailableMoves(Board board, bool white)
         {

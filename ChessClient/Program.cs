@@ -117,9 +117,9 @@ namespace ChessClient
 
                 int movedPieceSquareIndex = -1;
                 if (movedPiece != null && IsWhite)
-                    movedPieceSquareIndex = (movedPiece[0] - 'a' + 1) + (9 - int.Parse(movedPiece[1].ToString())-1) * 9;
+                    movedPieceSquareIndex = (char.ToLower(movedPiece[0]) - 'a' + 1) + (9 - int.Parse(movedPiece[1].ToString())-1) * 9;
                 else if (movedPiece != null && !IsWhite)
-                    movedPieceSquareIndex = (9 - (movedPiece[0] - 'a' + 1)) + ((int.Parse(movedPiece[1].ToString())-1)) * 9;
+                    movedPieceSquareIndex = (9 - (char.ToLower(movedPiece[0]) - 'a' + 1)) + ((int.Parse(movedPiece[1].ToString())-1)) * 9;
                 if (!IsWhite)
                 {// reverse fen
                     char[] charArray = fen.ToCharArray();

@@ -6,15 +6,17 @@ using System.Collections.Immutable;
 
 namespace Chess
 {
-    public class Board
+    internal class Board
     {
 
         int Width { get; init; } = 8;
         int Height { get; init; } = 8;
         public ImmutableDictionary<Square, IPiece> Squares { get; set; }
-        public Square? EnPassantSquare = null;// jen aby se políčko nemuselo hledat
-        public ImmutableDictionary<char, List<Square>> WhitePieces; // keys: piece symbol, values: list of squares where are the pieces
-        public ImmutableDictionary<char, List<Square>> BlackPieces;
+        public Square? EnPassantSquare { get; set; } = null;
+
+        // keys: piece symbol, values: list of squares where are the pieces
+        public ImmutableDictionary<char, List<Square>> WhitePieces { get; set; }
+        public ImmutableDictionary<char, List<Square>> BlackPieces { get; set; }
         public Board()
         {
             Dictionary<Square, IPiece> squares = new Dictionary<Square, IPiece>();
@@ -319,10 +321,6 @@ namespace Chess
             return ChessRules.EvaluateBoard(this, whitePlaying);
         }
         
-        public ImmutableDictionary<Square, IPiece> GetSquares()
-        {
-            return Squares;
-        }
         public void MakeMove(Move move)
         {
             Board newBoard = ChessRules.MakeMove(move, this);
