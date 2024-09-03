@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Chess
 {
@@ -162,6 +163,7 @@ namespace Chess
         public Move ChooseBestMove(Board board)
         {
             MoveValue result = EvaluateBestMoveParallel(board, 2, IsWhite, int.MinValue, int.MaxValue);
+
             return result.Move.GetValueOrDefault();
         }
     }

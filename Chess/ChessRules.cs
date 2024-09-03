@@ -181,8 +181,8 @@ namespace Chess
         }
         private static List<Square> FindPiecesSatisfyingCommand(
             MoveCommand query, bool attacking, bool whitePlaying, ImmutableDictionary<Square, IPiece> squares, bool guard = false)
-        {
-            // najít figurku/y, která se dostane na square
+        {// find piece(s) that can access the square
+
             List<Square> piecesSquares = new List<Square>();
             IPiece piece = GetPiece(query.PieceSymbol, whitePlaying);
 
